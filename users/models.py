@@ -16,4 +16,8 @@ class User(AbstractUser):
     linkedin_profile = models.URLField(blank=True)
     portfolio_website = models.URLField(blank=True)
 
+    email_verification_token = models.CharField(max_length=255,blank=True,null=True)
+
+    email_verification_expire = models.DateTimeField(blank=True, null=True)
+
     # username, first_name, last_name, password, is_active, last_login, date_joined, groups, user_permissions, 
