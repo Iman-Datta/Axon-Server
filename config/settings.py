@@ -32,7 +32,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
-    'users.apps.UsersConfig'
+    'users.apps.UsersConfig',
+    'rest_framework_simplejwt',
 ]
 
 MIDDLEWARE = [
@@ -43,7 +44,10 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "corsheaders.middleware.CorsMiddleware",
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True # Allow all
 
 ROOT_URLCONF = 'config.urls'
 
@@ -116,3 +120,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+FRONTEND_URL = os.getenv("FRONTEND_URL")
+BACKEND_URL=os.getenv("BACKEND_URL")
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+RESEND_SENDER_EMAIL = os.getenv("RESEND_SENDER_EMAIL")
