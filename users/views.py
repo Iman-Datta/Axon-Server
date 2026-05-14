@@ -1,5 +1,8 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
+
 from django.shortcuts import redirect
 
 from .serializers import RegisterSerializer
@@ -9,8 +12,6 @@ import hashlib
 
 from django.utils import timezone
 from datetime import timedelta
-
-from rest_framework_simplejwt.tokens import RefreshToken
 
 from django.conf import settings
 from .models import User
@@ -95,7 +96,7 @@ def verify_email_view(request):
     user.refresh_token_hash = hashed_refresh
 
     user.save()
-    
+
     response = redirect(f"{settings.FRONTEND_URL}/auth/callback")
 
     response.set_cookie(
@@ -107,3 +108,51 @@ def verify_email_view(request):
     )
 
     return response
+
+@api_view(['POST'])
+def refresh_token_view(request):
+    refresh_token = request.COOKIES.get("refresh_token")
+
+    if not refresh_token:
+        return Response({"message": "Refresh token missing", "success": False}, status=401)
+    
+    try:
+        token = RefreshToken(refresh_token)
+        if token["token_type"] != "refresh":
+            return Response({"message": "Invalid token type","success": False}, status=401)
+        
+        user_id = token["user_id"]
+        try:
+            user = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({"message": "User not found", "success": False}, status=404)
+        
+        hashed_refresh= hashlib.sha256(refresh_token.encode()).hexdigest()
+
+        if user.refresh_token_hash != hashed_refresh:
+            user.refresh_token_hash = None
+            user.save()
+            return Response({"message": "Invalid refresh token","success": False}, status=401)
+        
+        # Generate new Refresh token (Rotation)
+        new_refresh = RefreshToken.for_user(user)
+        new_refresh_token = str(new_refresh)
+        new_hashed_refresh = hashlib.sha256(new_refresh_token.encode()).hexdigest() # Hash new refresh token
+
+        user.refresh_token_hash = new_hashed_refresh
+        user.save()
+
+        new_access_token = str(new_refresh.access_token)
+        
+        response =  Response({ "access_token": new_access_token, "success": True},status=200)
+
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh_token,
+            httponly=True,
+            secure=False,  # True in production
+            samesite="Lax"
+        )
+        return response
+    except TokenError:
+         return Response({"message": "Invalid or expired refresh token", "success": False},status=401)
