@@ -20,4 +20,6 @@ class User(AbstractUser):
 
     email_verification_expire = models.DateTimeField(blank=True, null=True)
 
+    refresh_token_hash = models.TextField(blank=True,null=True)
+
     # username, first_name, last_name, password, is_active, last_login, date_joined, groups, user_permissions, 
