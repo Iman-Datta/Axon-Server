@@ -88,14 +88,22 @@ def verify_email_view(request):
     user.is_email_verified = True
     user.email_verification_token = None
     user.email_verification_expire = None
-    user.save()
 
     refresh = RefreshToken.for_user(user)
-    access_token = str(refresh.access_token)
+    refresh_token = str(refresh)
+    hashed_refresh = hashlib.sha256(refresh_token.encode()).hexdigest
+    user.refresh_token_hash = hashed_refresh
 
-    frontend_redirect_url = (
-        f"{settings.FRONTEND_URL}"
-        f"/dashboard?token={access_token}"
+    user.save()
+    
+    response = redirect(f"{settings.FRONTEND_URL}/auth/callback")
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,  # True in production
+        samesite="Lax"
     )
 
-    return redirect(frontend_redirect_url)
+    return response
