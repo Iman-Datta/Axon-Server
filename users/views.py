@@ -4,8 +4,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 
 from django.shortcuts import redirect
+from django.contrib.auth import authenticate
 
-from .serializers import RegisterSerializer
+from .serializers import RegisterSerializer, LoginSerializer
 
 import secrets
 import hashlib
@@ -78,13 +79,11 @@ def verify_email_view(request):
             status=400
         )
     
-    if(user.is_email_verified and user.email_verification_expire<timezone.now()):
-        return Response(
-            {
-                "message": "Token expired",
-                "success": False
-            }
-        )
+    if user.is_email_verified:
+        return Response({"message": "Email already verified","success": False},status=400)
+    
+    if(user.email_verification_expire and user.email_verification_expire<timezone.now()):
+        return Response({"message": "Token expired","success": False},status=400)
     
     user.is_email_verified = True
     user.email_verification_token = None
@@ -92,7 +91,7 @@ def verify_email_view(request):
 
     refresh = RefreshToken.for_user(user)
     refresh_token = str(refresh)
-    hashed_refresh = hashlib.sha256(refresh_token.encode()).hexdigest
+    hashed_refresh = hashlib.sha256(refresh_token.encode()).hexdigest()
     user.refresh_token_hash = hashed_refresh
 
     user.save()
@@ -144,7 +143,7 @@ def refresh_token_view(request):
 
         new_access_token = str(new_refresh.access_token)
         
-        response =  Response({ "access_token": new_access_token, "success": True},status=200)
+        response =  Response({"access_token": new_access_token, "success": True},status=200)
 
         response.set_cookie(
             key="refresh_token",
@@ -156,3 +155,108 @@ def refresh_token_view(request):
         return response
     except TokenError:
          return Response({"message": "Invalid or expired refresh token", "success": False},status=401)
+
+@api_view(['POST'])
+def login_view(request):
+
+    serializer = LoginSerializer(data=request.data)
+
+    if not serializer.is_valid():
+        return Response(
+            serializer.errors,
+            status=400
+        )
+
+    validated_data = serializer.validated_data
+
+    email = validated_data.get("email")
+    username = validated_data.get("username")
+    password = validated_data.get("password")
+
+    user = None
+
+    # Login with email
+    if email:
+
+        try:
+            user_obj = User.objects.get(email=email)
+
+            user = authenticate(
+                username=user_obj.username,
+                password=password
+            )
+
+        except User.DoesNotExist:
+
+            return Response(
+                {
+                    "message": "Invalid credentials",
+                    "success": False
+                },
+                status=400
+            )
+
+    # Login with username
+    elif username:
+
+        user = authenticate(
+            username=username,
+            password=password
+        )
+
+    # Invalid password / auth failed
+    if not user:
+
+        return Response(
+            {
+                "message": "Invalid credentials",
+                "success": False
+            },
+            status=401
+        )
+
+    # Email verification check
+    if not user.is_email_verified:
+
+        return Response(
+            {
+                "message": "Please verify your email",
+                "success": False
+            },
+            status=403
+        )
+
+    # Generate JWT tokens
+    refresh = RefreshToken.for_user(user)
+
+    refresh_token = str(refresh)
+    access_token = str(refresh.access_token)
+
+    # Hash refresh token
+    hashed_refresh = hashlib.sha256(
+        refresh_token.encode()
+    ).hexdigest()
+
+    # Save hashed refresh token
+    user.refresh_token_hash = hashed_refresh
+    user.save()
+
+    response = Response(
+        {
+            "access_token": access_token,
+            "message": "Login successful",
+            "success": True
+        },
+        status=200
+    )
+
+    # Set refresh token cookie
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=False,   # True in production
+        samesite="Lax"
+    )
+
+    return response
