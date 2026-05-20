@@ -1,4 +1,5 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import (api_view, permission_classes)
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
@@ -157,8 +158,7 @@ def refresh_token_view(request):
          return Response({"message": "Invalid or expired refresh token", "success": False},status=401)
 
 @api_view(['POST'])
-def login_view(request):
-
+def login_view(request):    
     serializer = LoginSerializer(data=request.data)
 
     if not serializer.is_valid():
@@ -181,50 +181,27 @@ def login_view(request):
         try:
             user_obj = User.objects.get(email=email)
 
-            user = authenticate(
-                username=user_obj.username,
-                password=password
+            user = authenticate(username=user_obj.username,password=password
             )
 
         except User.DoesNotExist:
 
-            return Response(
-                {
-                    "message": "Invalid credentials",
-                    "success": False
-                },
-                status=400
-            )
+            return Response({"message": "Invalid credentials", "success": False}, status=400)
 
     # Login with username
     elif username:
-
-        user = authenticate(
-            username=username,
-            password=password
-        )
+        user = authenticate(username=username, password=password)
 
     # Invalid password / auth failed
     if not user:
 
-        return Response(
-            {
-                "message": "Invalid credentials",
-                "success": False
-            },
-            status=401
-        )
-
+        return Response({"message": "Invalid credentials", "success": False}, status=401)
+    
     # Email verification check
     if not user.is_email_verified:
 
         return Response(
-            {
-                "message": "Please verify your email",
-                "success": False
-            },
-            status=403
-        )
+            {"message": "Please verify your email", "success": False}, status=403)
 
     # Generate JWT tokens
     refresh = RefreshToken.for_user(user)
@@ -233,22 +210,15 @@ def login_view(request):
     access_token = str(refresh.access_token)
 
     # Hash refresh token
-    hashed_refresh = hashlib.sha256(
-        refresh_token.encode()
-    ).hexdigest()
+    hashed_refresh = hashlib.sha256(refresh_token.encode()).hexdigest()
 
     # Save hashed refresh token
     user.refresh_token_hash = hashed_refresh
+
     user.save()
 
     response = Response(
-        {
-            "access_token": access_token,
-            "message": "Login successful",
-            "success": True
-        },
-        status=200
-    )
+        {"access_token": access_token, "message": "Login successful","success": True },status=200)
 
     # Set refresh token cookie
     response.set_cookie(
@@ -260,3 +230,63 @@ def login_view(request):
     )
 
     return response
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def logout_viwe(request):
+    user = request.user
+
+    user.refresh_token_hash = None
+    user.save()
+
+    response = Response({"message": "Logout successful","success": True},status=200)
+
+    response.delete_cookie("refresh_token")
+    return response
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def me_view(request):
+
+    try:
+        user = request.user
+        if not user:
+            return Response({"message": "User not found","success": False}, status=404)
+        
+        avatar_url = None
+
+        if user.avatar:
+            avatar_url = request.build_absolute_uri(
+                user.avatar.url
+            )
+
+        user_data = {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+
+            "first_name": user.first_name,
+            "last_name": user.last_name,
+
+            "avatar": avatar_url,
+            "bio": user.bio,
+
+            "is_email_verified": user.is_email_verified,
+            "is_profile_completed": user.is_profile_completed,
+
+            "google_id": user.google_id,
+
+            "github_profile": user.github_profile,
+            "linkedin_profile": user.linkedin_profile,
+            "portfolio_website": user.portfolio_website,
+
+            "created_at": user.created_at,
+            "updated_at": user.updated_at,
+        }
+
+        return Response({"user": user_data,"success": True}, status=200)
+    
+    except Exception as e:
+        return Response(
+            {"message": str(e),"success": False},status=500)
+
