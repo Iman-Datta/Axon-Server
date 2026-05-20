@@ -30,3 +30,21 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         user.save()
         return user
+    
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField(required = False)
+    username = serializers.CharField(required = False)
+    password = serializers.CharField(required = True)
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        username = attrs.get("username")
+
+        # both are missing
+        if not email and not username:
+            raise serializers.ValidationError("Email or username is required")
+        
+        if(email and username):
+            raise serializers.ValidationError("Use either email or username")
+        
+        return attrs
