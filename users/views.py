@@ -1,3 +1,5 @@
+import hashlib
+
 from rest_framework.decorators import (api_view, permission_classes)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -9,16 +11,12 @@ from django.contrib.auth import authenticate
 
 from .serializers import RegisterSerializer, LoginSerializer
 
-import secrets
-import hashlib
-
 from django.utils import timezone
-from datetime import timedelta
 
 from django.conf import settings
 from .models import User
-from .utils.send_email import send_email
-from .emails.verify_email_template import (verify_email_template)
+from .utils.email_verification import send_verification_email
+
 
 @api_view(['POST'])
 def register_view(request):
@@ -29,30 +27,10 @@ def register_view(request):
 
         user = serializer.save()
 
-        raw_token = secrets.token_urlsafe(32) # raw token generate
-        hash_token = hashlib.sha256(raw_token.encode()).hexdigest() # hash token for db
-        
-        user.email_verification_token = hash_token # hash token store in DB
-        user.email_verification_expire = (timezone.now() + timedelta(minutes=15))
+        send_verification_email(user)
 
-        user.save()
-
-        verification_url = (f"{settings.BACKEND_URL}" f"/verify-email/?token={raw_token}")
-
-        send_email(user.email,"Verify your email",verify_email_template(verification_url))
-
-        return Response(
-            {
-                "message": (
-                    "Account created. "
-                    "Please verify your email."
-                ),
-                "verification_url": verification_url,
-                "success": True
-            },
-            status=201
-        )
-
+        return Response({"message": "Account created. Please verify your email.", "success": True},status=201)
+            
     return Response(serializer.errors,status=400)
 
 @api_view(['GET'])
@@ -61,12 +39,7 @@ def verify_email_view(request):
 
     if not raw_token:
         return Response(
-            {
-                "message": "Token missing",
-                "success": False
-            },
-            status=400
-        )
+            {"message": "Token missing","success": False},status=400)
     
     hash_token = hashlib.sha256(raw_token.encode()).hexdigest()
     try:
@@ -80,16 +53,16 @@ def verify_email_view(request):
             status=400
         )
     
-    if user.is_email_verified:
-        return Response({"message": "Email already verified","success": False},status=400)
     
     if(user.email_verification_expire and user.email_verification_expire<timezone.now()):
         return Response({"message": "Token expired","success": False},status=400)
     
-    user.is_email_verified = True
-    user.email_verification_token = None
-    user.email_verification_expire = None
-
+    if not user.is_email_verified:
+        user.is_email_verified = True
+        user.email_verification_token = None
+        user.email_verification_expire = None
+        # return Response({"message": "Email already verified","success": False},status=400)
+    
     refresh = RefreshToken.for_user(user)
     refresh_token = str(refresh)
     hashed_refresh = hashlib.sha256(refresh_token.encode()).hexdigest()
@@ -194,14 +167,13 @@ def login_view(request):
 
     # Invalid password / auth failed
     if not user:
-
         return Response({"message": "Invalid credentials", "success": False}, status=401)
     
     # Email verification check
     if not user.is_email_verified:
-
-        return Response(
-            {"message": "Please verify your email", "success": False}, status=403)
+        send_verification_email(user)
+        return Response({"message": ("Email not verified. Verification email sent again."), "success": False}, status=403)
+            
 
     # Generate JWT tokens
     refresh = RefreshToken.for_user(user)
@@ -233,7 +205,7 @@ def login_view(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def logout_viwe(request):
+def logout_view(request):
     user = request.user
 
     user.refresh_token_hash = None
