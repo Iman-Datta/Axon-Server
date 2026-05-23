@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework import status
 
 from django.shortcuts import redirect
 from django.contrib.auth import authenticate
@@ -131,68 +132,146 @@ def refresh_token_view(request):
          return Response({"message": "Invalid or expired refresh token", "success": False},status=401)
 
 @api_view(['POST'])
-def login_view(request):    
+@api_view(['POST'])
+def login_view(request):
+
     serializer = LoginSerializer(data=request.data)
 
+    # SERIALIZER VALIDATION
     if not serializer.is_valid():
-        return Response(
-            serializer.errors,
-            status=400
-        )
+        return Response({"success": False,"errors": serializer.errors},status=status.HTTP_400_BAD_REQUEST)
 
     validated_data = serializer.validated_data
 
-    email = validated_data.get("email")
-    username = validated_data.get("username")
+    identifier = validated_data.get("identifier")
     password = validated_data.get("password")
 
     user = None
-
-    # Login with email
-    if email:
+    if "@" in identifier:
 
         try:
-            user_obj = User.objects.get(email=email)
+            user_obj = User.objects.get(email=identifier)
 
-            user = authenticate(username=user_obj.username,password=password
+            # EMAIL NOT VERIFIED
+            if not user_obj.is_email_verified:
+                send_verification_email(user_obj)
+                return Response(
+                    {
+                        "success": False,
+                        "message": (
+                            "Email not verified. "
+                            "Verification email sent again."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # AUTHENTICATE USING USERNAME
+            user = authenticate(
+                username=user_obj.username,
+                password=password
+            )
+
+        except User.DoesNotExist:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid credentials."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+    else:
+
+        try:
+            user_obj = User.objects.get(username=identifier)
+
+            # EMAIL NOT VERIFIED
+            if not user_obj.is_email_verified:
+                send_verification_email(user_obj)
+
+                return Response(
+                    {
+                        "success": False,
+                        "message": (
+                            "Email not verified. "
+                            "Verification email sent again."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            user = authenticate(
+                username=identifier,
+                password=password
             )
 
         except User.DoesNotExist:
 
-            return Response({"message": "Invalid credentials", "success": False}, status=400)
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid credentials."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
-    # Login with username
-    elif username:
-        user = authenticate(username=username, password=password)
-
-    # Invalid password / auth failed
     if not user:
-        return Response({"message": "Invalid credentials", "success": False}, status=401)
-    
-    # Email verification check
-    if not user.is_email_verified:
-        send_verification_email(user)
-        return Response({"message": ("Email not verified. Verification email sent again."), "success": False}, status=403)
-            
 
-    # Generate JWT tokens
+        return Response(
+            {
+                "success": False,
+                "message": "Invalid credentials."
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
+
+    # ----------------------------------------
+    # GENERATE JWT TOKENS
+    # ----------------------------------------
     refresh = RefreshToken.for_user(user)
 
     refresh_token = str(refresh)
     access_token = str(refresh.access_token)
 
-    # Hash refresh token
-    hashed_refresh = hashlib.sha256(refresh_token.encode()).hexdigest()
+    # HASH REFRESH TOKEN
+    hashed_refresh_token = hashlib.sha256(
+        refresh_token.encode()
+    ).hexdigest()
 
-    # Save hashed refresh token
-    user.refresh_token_hash = hashed_refresh
-
+    # SAVE HASHED TOKEN
+    user.refresh_token_hash = hashed_refresh_token
     user.save()
 
+    # ----------------------------------------
+    # RESPONSE
+    # ----------------------------------------
     response = Response(
-        {"access_token": access_token, "message": "Login successful","success": True },status=200)
+        {
+            "success": True,
+            "message": "Login successful.",
+            "access_token": access_token,
 
-    # Set refresh token cookie
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "avatar": (
+                    user.avatar.url
+                    if user.avatar
+                    else None
+                ),
+                "bio": user.bio,
+                "is_email_verified": user.is_email_verified,
+                "is_profile_completed": user.is_profile_completed,
+            }
+        },
+        status=status.HTTP_200_OK
+    )
+
+    # ----------------------------------------
+    # SET REFRESH TOKEN COOKIE
+    # ----------------------------------------
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -202,7 +281,6 @@ def login_view(request):
     )
 
     return response
-
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_view(request):

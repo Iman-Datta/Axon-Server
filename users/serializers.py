@@ -32,19 +32,23 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
     
 class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField(required = False)
-    username = serializers.CharField(required = False)
-    password = serializers.CharField(required = True)
+    identifier = serializers.CharField(required=True,max_length=255,trim_whitespace=True)
+    password = serializers.CharField(required=True,write_only=True,style={"input_type": "password"})
 
-    def validate(self, attrs):
-        email = attrs.get("email")
-        username = attrs.get("username")
+    def validate_identifier(self, value):
+        value = value.strip()
 
-        # both are missing
-        if not email and not username:
-            raise serializers.ValidationError("Email or username is required")
-        
-        if(email and username):
-            raise serializers.ValidationError("Use either email or username")
-        
-        return attrs
+        if not value:
+            raise serializers.ValidationError(
+                "Username or email is required."
+            )
+
+        return value
+
+    def validate_password(self, value):
+        if not value.strip():
+            raise serializers.ValidationError(
+                "Password is required."
+            )
+
+        return value
