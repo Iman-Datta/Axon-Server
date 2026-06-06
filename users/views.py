@@ -1,24 +1,24 @@
+import hashlib
+
 from rest_framework.decorators import (api_view, permission_classes)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework import status
 
 from django.shortcuts import redirect
 from django.contrib.auth import authenticate
+from urllib.parse import urlencode
 
 from .serializers import RegisterSerializer, LoginSerializer
 
-import secrets
-import hashlib
-
 from django.utils import timezone
-from datetime import timedelta
 
 from django.conf import settings
 from .models import User
-from .utils.send_email import send_email
-from .emails.verify_email_template import (verify_email_template)
+from .utils.email_verification import send_verification_email
+
 
 @api_view(['POST'])
 def register_view(request):
@@ -29,83 +29,136 @@ def register_view(request):
 
         user = serializer.save()
 
-        raw_token = secrets.token_urlsafe(32) # raw token generate
-        hash_token = hashlib.sha256(raw_token.encode()).hexdigest() # hash token for db
-        
-        user.email_verification_token = hash_token # hash token store in DB
-        user.email_verification_expire = (timezone.now() + timedelta(minutes=15))
+        send_verification_email(user)
 
-        user.save()
-
-        verification_url = (f"{settings.BACKEND_URL}" f"/verify-email/?token={raw_token}")
-
-        send_email(user.email,"Verify your email",verify_email_template(verification_url))
-
-        return Response(
-            {
-                "message": (
-                    "Account created. "
-                    "Please verify your email."
-                ),
-                "verification_url": verification_url,
-                "success": True
-            },
-            status=201
-        )
-
+        return Response({"message": "Account created. Please verify your email.", "success": True},status=201)
+            
     return Response(serializer.errors,status=400)
 
-@api_view(['GET'])
+@api_view(["GET"])
 def verify_email_view(request):
+
     raw_token = request.GET.get("token")
 
+
+    def redirect_callback(status, message):
+        params = urlencode({
+            "status": status,
+            "message": message
+        })
+
+        return redirect(
+            f"{settings.FRONTEND_URL}/email-callback?{params}"
+        )
+
+
+    # Token missing
     if not raw_token:
-        return Response(
-            {
-                "message": "Token missing",
-                "success": False
-            },
-            status=400
+        return redirect_callback(
+            "failed",
+            "Verification token is missing."
         )
-    
-    hash_token = hashlib.sha256(raw_token.encode()).hexdigest()
+
+
+    hashed_token = hashlib.sha256(
+        raw_token.encode()
+    ).hexdigest()
+
+
+    # Find user
     try:
-        user = User.objects.get(email_verification_token = hash_token)
-    except User.DoesNotExist:
-        return Response(
-            {
-                "message": "Invalid token",
-                "success": False
-            },
-            status=400
+        user = User.objects.get(
+            email_verification_token=hashed_token
         )
-    
+
+    except User.DoesNotExist:
+
+        return redirect_callback(
+            "failed",
+            "Verification link is invalid or already used."
+        )
+
+
+    # Already verified
     if user.is_email_verified:
-        return Response({"message": "Email already verified","success": False},status=400)
-    
-    if(user.email_verification_expire and user.email_verification_expire<timezone.now()):
-        return Response({"message": "Token expired","success": False},status=400)
-    
+
+        return redirect_callback(
+            "success",
+            "Your email is already verified."
+        )
+
+
+    # Token expired
+    if (
+        user.email_verification_expire
+        and user.email_verification_expire < timezone.now()
+    ):
+
+        user.email_verification_token = None
+        user.email_verification_expire = None
+
+        user.save(
+            update_fields=[
+                "email_verification_token",
+                "email_verification_expire"
+            ]
+        )
+
+
+        return redirect_callback(
+            "expired",
+            "Verification link expired. Please request a new one."
+        )
+
+
+    # Verify user
     user.is_email_verified = True
+
     user.email_verification_token = None
+
     user.email_verification_expire = None
 
+
+
+    # Create JWT refresh token
     refresh = RefreshToken.for_user(user)
+
     refresh_token = str(refresh)
-    hashed_refresh = hashlib.sha256(refresh_token.encode()).hexdigest()
-    user.refresh_token_hash = hashed_refresh
 
-    user.save()
 
-    response = redirect(f"{settings.FRONTEND_URL}/auth/callback")
+    # Store hashed refresh token
+    user.refresh_token_hash = hashlib.sha256(
+        refresh_token.encode()
+    ).hexdigest()
 
+
+    user.save(
+        update_fields=[
+            "is_email_verified",
+            "email_verification_token",
+            "email_verification_expire",
+            "refresh_token_hash"
+        ]
+    )
+
+
+
+    response = redirect_callback(
+        "success",
+        "Email verified successfully."
+    )
+
+
+    # Store refresh cookie
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,  # True in production
-        samesite="Lax"
+        secure=False,     # True on HTTPS production
+        samesite="Lax",
+        max_age=7 * 24 * 60 * 60
     )
+
 
     return response
 
@@ -158,69 +211,145 @@ def refresh_token_view(request):
          return Response({"message": "Invalid or expired refresh token", "success": False},status=401)
 
 @api_view(['POST'])
-def login_view(request):    
+def login_view(request):
+
     serializer = LoginSerializer(data=request.data)
 
+    # SERIALIZER VALIDATION
     if not serializer.is_valid():
-        return Response(
-            serializer.errors,
-            status=400
-        )
+        return Response({"success": False,"errors": serializer.errors},status=status.HTTP_400_BAD_REQUEST)
 
     validated_data = serializer.validated_data
 
-    email = validated_data.get("email")
-    username = validated_data.get("username")
+    identifier = validated_data.get("identifier")
     password = validated_data.get("password")
 
     user = None
-
-    # Login with email
-    if email:
+    if "@" in identifier:
 
         try:
-            user_obj = User.objects.get(email=email)
+            user_obj = User.objects.get(email=identifier)
 
-            user = authenticate(username=user_obj.username,password=password
+            # EMAIL NOT VERIFIED
+            if not user_obj.is_email_verified:
+                send_verification_email(user_obj)
+                return Response(
+                    {
+                        "success": False,
+                        "message": (
+                            "Email not verified. "
+                            "Verification email sent again."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            # AUTHENTICATE USING USERNAME
+            user = authenticate(
+                username=user_obj.username,
+                password=password
+            )
+
+        except User.DoesNotExist:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid credentials."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+    else:
+
+        try:
+            user_obj = User.objects.get(username=identifier)
+
+            # EMAIL NOT VERIFIED
+            if not user_obj.is_email_verified:
+                send_verification_email(user_obj)
+
+                return Response(
+                    {
+                        "success": False,
+                        "message": (
+                            "Email not verified. "
+                            "Verification email sent again."
+                        )
+                    },
+                    status=status.HTTP_403_FORBIDDEN
+                )
+
+            user = authenticate(
+                username=identifier,
+                password=password
             )
 
         except User.DoesNotExist:
 
-            return Response({"message": "Invalid credentials", "success": False}, status=400)
+            return Response(
+                {
+                    "success": False,
+                    "message": "Invalid credentials."
+                },
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
-    # Login with username
-    elif username:
-        user = authenticate(username=username, password=password)
-
-    # Invalid password / auth failed
     if not user:
 
-        return Response({"message": "Invalid credentials", "success": False}, status=401)
-    
-    # Email verification check
-    if not user.is_email_verified:
-
         return Response(
-            {"message": "Please verify your email", "success": False}, status=403)
+            {
+                "success": False,
+                "message": "Invalid credentials."
+            },
+            status=status.HTTP_401_UNAUTHORIZED
+        )
 
-    # Generate JWT tokens
+    # ----------------------------------------
+    # GENERATE JWT TOKENS
+    # ----------------------------------------
     refresh = RefreshToken.for_user(user)
 
     refresh_token = str(refresh)
     access_token = str(refresh.access_token)
 
-    # Hash refresh token
-    hashed_refresh = hashlib.sha256(refresh_token.encode()).hexdigest()
+    # HASH REFRESH TOKEN
+    hashed_refresh_token = hashlib.sha256(
+        refresh_token.encode()
+    ).hexdigest()
 
-    # Save hashed refresh token
-    user.refresh_token_hash = hashed_refresh
-
+    # SAVE HASHED TOKEN
+    user.refresh_token_hash = hashed_refresh_token
     user.save()
 
+    # ----------------------------------------
+    # RESPONSE
+    # ----------------------------------------
     response = Response(
-        {"access_token": access_token, "message": "Login successful","success": True },status=200)
+        {
+            "success": True,
+            "message": "Login successful.",
+            "access_token": access_token,
 
-    # Set refresh token cookie
+            "user": {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "avatar": (
+                    user.avatar.url
+                    if user.avatar
+                    else None
+                ),
+                "bio": user.bio,
+                "is_email_verified": user.is_email_verified,
+                "is_profile_completed": user.is_profile_completed,
+            }
+        },
+        status=status.HTTP_200_OK
+    )
+
+    # ----------------------------------------
+    # SET REFRESH TOKEN COOKIE
+    # ----------------------------------------
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -233,7 +362,7 @@ def login_view(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
-def logout_viwe(request):
+def logout_view(request):
     user = request.user
 
     user.refresh_token_hash = None
