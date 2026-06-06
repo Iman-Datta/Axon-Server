@@ -9,6 +9,7 @@ from rest_framework import status
 
 from django.shortcuts import redirect
 from django.contrib.auth import authenticate
+from urllib.parse import urlencode
 
 from .serializers import RegisterSerializer, LoginSerializer
 
@@ -34,52 +35,130 @@ def register_view(request):
             
     return Response(serializer.errors,status=400)
 
-@api_view(['GET'])
+@api_view(["GET"])
 def verify_email_view(request):
+
     raw_token = request.GET.get("token")
 
-    if not raw_token:
-        return Response(
-            {"message": "Token missing","success": False},status=400)
-    
-    hash_token = hashlib.sha256(raw_token.encode()).hexdigest()
-    try:
-        user = User.objects.get(email_verification_token = hash_token)
-    except User.DoesNotExist:
-        return Response(
-            {
-                "message": "Invalid token",
-                "success": False
-            },
-            status=400
+
+    def redirect_callback(status, message):
+        params = urlencode({
+            "status": status,
+            "message": message
+        })
+
+        return redirect(
+            f"{settings.FRONTEND_URL}/email-callback?{params}"
         )
-    
-    
-    if(user.email_verification_expire and user.email_verification_expire<timezone.now()):
-        return Response({"message": "Token expired","success": False},status=400)
-    
-    if not user.is_email_verified:
-        user.is_email_verified = True
+
+
+    # Token missing
+    if not raw_token:
+        return redirect_callback(
+            "failed",
+            "Verification token is missing."
+        )
+
+
+    hashed_token = hashlib.sha256(
+        raw_token.encode()
+    ).hexdigest()
+
+
+    # Find user
+    try:
+        user = User.objects.get(
+            email_verification_token=hashed_token
+        )
+
+    except User.DoesNotExist:
+
+        return redirect_callback(
+            "failed",
+            "Verification link is invalid or already used."
+        )
+
+
+    # Already verified
+    if user.is_email_verified:
+
+        return redirect_callback(
+            "success",
+            "Your email is already verified."
+        )
+
+
+    # Token expired
+    if (
+        user.email_verification_expire
+        and user.email_verification_expire < timezone.now()
+    ):
+
         user.email_verification_token = None
         user.email_verification_expire = None
-        # return Response({"message": "Email already verified","success": False},status=400)
-    
+
+        user.save(
+            update_fields=[
+                "email_verification_token",
+                "email_verification_expire"
+            ]
+        )
+
+
+        return redirect_callback(
+            "expired",
+            "Verification link expired. Please request a new one."
+        )
+
+
+    # Verify user
+    user.is_email_verified = True
+
+    user.email_verification_token = None
+
+    user.email_verification_expire = None
+
+
+
+    # Create JWT refresh token
     refresh = RefreshToken.for_user(user)
+
     refresh_token = str(refresh)
-    hashed_refresh = hashlib.sha256(refresh_token.encode()).hexdigest()
-    user.refresh_token_hash = hashed_refresh
 
-    user.save()
 
-    response = redirect(f"{settings.FRONTEND_URL}/auth/callback")
+    # Store hashed refresh token
+    user.refresh_token_hash = hashlib.sha256(
+        refresh_token.encode()
+    ).hexdigest()
 
+
+    user.save(
+        update_fields=[
+            "is_email_verified",
+            "email_verification_token",
+            "email_verification_expire",
+            "refresh_token_hash"
+        ]
+    )
+
+
+
+    response = redirect_callback(
+        "success",
+        "Email verified successfully."
+    )
+
+
+    # Store refresh cookie
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=False,  # True in production
-        samesite="Lax"
+        secure=False,     # True on HTTPS production
+        samesite="Lax",
+        max_age=7 * 24 * 60 * 60
     )
+
 
     return response
 
@@ -131,7 +210,6 @@ def refresh_token_view(request):
     except TokenError:
          return Response({"message": "Invalid or expired refresh token", "success": False},status=401)
 
-@api_view(['POST'])
 @api_view(['POST'])
 def login_view(request):
 
@@ -281,6 +359,7 @@ def login_view(request):
     )
 
     return response
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
