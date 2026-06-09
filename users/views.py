@@ -217,7 +217,6 @@ def login_view(request):
 
     serializer = LoginSerializer(data=request.data)
 
-    # SERIALIZER VALIDATION
     if not serializer.is_valid():
         return Response({"success": False,"errors": serializer.errors},status=status.HTTP_400_BAD_REQUEST)
 
@@ -232,7 +231,6 @@ def login_view(request):
         try:
             user_obj = User.objects.get(email=identifier)
 
-            # EMAIL NOT VERIFIED
             if not user_obj.is_email_verified:
                 send_verification_email(user_obj)
                 return Response(
@@ -246,7 +244,6 @@ def login_view(request):
                     status=status.HTTP_403_FORBIDDEN
                 )
 
-            # AUTHENTICATE USING USERNAME
             user = authenticate(
                 username=user_obj.username,
                 password=password
@@ -266,7 +263,6 @@ def login_view(request):
         try:
             user_obj = User.objects.get(username=identifier)
 
-            # EMAIL NOT VERIFIED
             if not user_obj.is_email_verified:
                 send_verification_email(user_obj)
 
@@ -306,26 +302,18 @@ def login_view(request):
             status=status.HTTP_401_UNAUTHORIZED
         )
 
-    # ----------------------------------------
-    # GENERATE JWT TOKENS
-    # ----------------------------------------
     refresh = RefreshToken.for_user(user)
 
     refresh_token = str(refresh)
     access_token = str(refresh.access_token)
 
-    # HASH REFRESH TOKEN
     hashed_refresh_token = hashlib.sha256(
         refresh_token.encode()
     ).hexdigest()
 
-    # SAVE HASHED TOKEN
     user.refresh_token_hash = hashed_refresh_token
     user.save()
 
-    # ----------------------------------------
-    # RESPONSE
-    # ----------------------------------------
     response = Response(
         {
             "success": True,
@@ -349,9 +337,6 @@ def login_view(request):
         status=status.HTTP_200_OK
     )
 
-    # ----------------------------------------
-    # SET REFRESH TOKEN COOKIE
-    # ----------------------------------------
     response.set_cookie(
         key="refresh_token",
         value=refresh_token,
@@ -420,7 +405,7 @@ def me_view(request):
             {"message": str(e),"success": False},status=500)
 
 @api_view(['GET'])
-def google_login_view(request):
+def google_login_view():
     google_url = (
         "https://accounts.google.com/o/oauth2/v2/auth?"
         +
