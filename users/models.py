@@ -4,20 +4,17 @@ from django.db import models
 class User(AbstractUser):
     email = models.EmailField(unique=True, db_index=True)
     username = models.CharField(unique=True, max_length=30, db_index=True)
-    avatar = models.ImageField(upload_to="avatars/", blank=True, null=True) # Pillow is needed for image field
+    avatar = models.URLField(blank=True)
     bio = models.TextField(blank=True)
 
     is_email_verified = models.BooleanField(default=False, db_index=True)
     is_profile_completed = models.BooleanField(default=False, db_index=True)
-
-    google_id = models.CharField(max_length=255,blank=True, null=True)
 
     github_profile = models.URLField(blank=True)
     linkedin_profile = models.URLField(blank=True)
     portfolio_website = models.URLField(blank=True)
 
     email_verification_token = models.CharField(max_length=255,blank=True,null=True)
-
     email_verification_expire = models.DateTimeField(blank=True, null=True)
 
     refresh_token_hash = models.TextField(blank=True,null=True)
