@@ -1,6 +1,6 @@
 
 from django.urls import path
-from .views import register_view, verify_email_view, refresh_token_view, login_view, logout_view,me_view, google_login_view, google_callback_view
+from .views import register_view, verify_email_view, refresh_token_view, login_view, logout_view,me_view, google_login_view, google_callback_view, github_login_view, github_callback_view
 
 urlpatterns = [
     path("register/", register_view),
@@ -12,5 +12,9 @@ urlpatterns = [
 
     # Google OAuth
     path("google/", google_login_view,name="google-login"),
-    path("google/callback/",google_callback_view,name="google-callback"),   
+    path("google/callback/",google_callback_view,name="google-callback"),
+
+    # GitHub OAuth
+    path("auth/github/",github_login_view),
+    path("auth/github/callback/",github_callback_view),
 ]

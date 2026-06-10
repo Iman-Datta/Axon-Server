@@ -9,10 +9,10 @@ from django.shortcuts import redirect
 from urllib.parse import urlencode
 
 from django.conf import settings
-from ..models import User
+from ...models import User
 
 @api_view(['GET'])
-def google_login_view():
+def google_login_view(request):
     google_url = (
         "https://accounts.google.com/o/oauth2/v2/auth?"
         +
@@ -75,15 +75,32 @@ def google_callback_view(request):
             return redirect(f"{settings.FRONTEND_URL}/auth")
 
         
+        google_id = google_user.get("id")
         email = google_user.get("email")
         first_name = google_user.get("given_name", "")
         last_name = google_user.get("family_name", "")
-        avatar = google_user.get("picture","")
+        avatar = google_user.get("picture", "")
 
-        user = User.objects.filter( email=email).first()
+        user = User.objects.filter(google_id=google_id).first() # check Google identity
+
+        if not user and email: # email fallback
+            user = User.objects.filter(email=email).first()
 
         if user:
             update_fields = []
+
+            if not user.google_id:
+                user.google_id = google_id
+                update_fields.append("google_id")
+
+            if email and user.email != email: # Google id match but email doesnot
+                email_exists = User.objects.filter(email=email).exclude(id=user.id).exists()
+                if not email_exists:
+                    user.email = email
+                    update_fields.append("email")
+                else:
+                    # TODO: Handle OAuth email conflict case (provider ID matches but new email already belongs to another Axon account)
+                    pass
 
             if not user.is_email_verified:
                 user.is_email_verified = True
@@ -103,6 +120,7 @@ def google_callback_view(request):
             user = User.objects.create(
                 username=temp_username,
                 email=email,
+                google_id=google_id,
                 first_name=first_name,
                 last_name=last_name,
                 avatar=avatar,
