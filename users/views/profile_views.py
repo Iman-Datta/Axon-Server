@@ -10,13 +10,6 @@ def me_view(request):
         user = request.user
         if not user:
             return Response({"message": "User not found","success": False}, status=404)
-        
-        avatar_url = None
-
-        if user.avatar:
-            avatar_url = request.build_absolute_uri(
-                user.avatar.url
-            )
 
         user_data = {
             "id": user.id,
@@ -26,7 +19,7 @@ def me_view(request):
             "first_name": user.first_name,
             "last_name": user.last_name,
 
-            "avatar": avatar_url,
+            "avatar": user.avatar,
             "bio": user.bio,
 
             "is_email_verified": user.is_email_verified,

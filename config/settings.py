@@ -7,13 +7,21 @@ load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 SECRET_KEY = os.getenv("SECRET_KEY")
+
 FRONTEND_URL = os.getenv("FRONTEND_URL")
+BACKEND_URL=os.getenv("BACKEND_URL")
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI")
+
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
+GITHUB_CLIENT_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
+GITHUB_REDIRECT_URI = os.getenv("GITHUB_REDIRECT_URI")
+
+RESEND_API_KEY = os.getenv("RESEND_API_KEY")
+RESEND_SENDER_EMAIL = os.getenv("RESEND_SENDER_EMAIL")
 
 DEBUG = True
 
@@ -127,10 +135,3 @@ STATIC_URL = 'static/'
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR,"media")
-
-FRONTEND_URL = os.getenv("FRONTEND_URL")
-BACKEND_URL=os.getenv("BACKEND_URL")
-
-RESEND_API_KEY = os.getenv("RESEND_API_KEY")
-
-RESEND_SENDER_EMAIL = os.getenv("RESEND_SENDER_EMAIL")
