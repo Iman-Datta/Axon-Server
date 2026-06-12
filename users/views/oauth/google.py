@@ -121,9 +121,12 @@ def google_callback_view(request):
                 username=temp_username,
                 email=email,
                 google_id=google_id,
+
                 first_name=first_name,
                 last_name=last_name,
                 avatar=avatar,
+
+                is_username_set=False,
                 is_email_verified=True,
                 is_profile_completed=False,
             )
