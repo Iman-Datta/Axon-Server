@@ -192,7 +192,7 @@ def refresh_token_view(request):
         new_hashed_refresh = hashlib.sha256(new_refresh_token.encode()).hexdigest() # Hash new refresh token
 
         user.refresh_token_hash = new_hashed_refresh
-        user.save()
+        user.save(update_fields=["refresh_token_hash"])
 
         new_access_token = str(new_refresh.access_token)
         
@@ -321,12 +321,16 @@ def login_view(request):
                 "id": user.id,
                 "username": user.username,
                 "email": user.email,
+
                 "avatar": (
                     user.avatar.url
                     if user.avatar
                     else None
                 ),
+
                 "bio": user.bio,
+
+                "is_username_set": user.is_username_set,
                 "is_email_verified": user.is_email_verified,
                 "is_profile_completed": user.is_profile_completed,
             }

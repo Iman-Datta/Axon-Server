@@ -7,12 +7,14 @@ class User(AbstractUser):
 
     email = models.EmailField(unique=True, null=True, blank=True, db_index=True)
     google_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
-    is_email_verified = models.BooleanField(default=False, db_index=True)
+    
 
     avatar = models.URLField(blank=True, null=True)
     bio = models.TextField(blank=True)
 
     is_profile_completed = models.BooleanField(default=False, db_index=True)
+    is_username_set = models.BooleanField(default=False,db_index=True)
+    is_email_verified = models.BooleanField(default=False, db_index=True)
 
     github_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
     github_username = models.CharField(max_length=255, blank=True)

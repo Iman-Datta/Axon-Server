@@ -130,10 +130,14 @@ def github_callback_view(request):
             user = User.objects.create(
                 username=temp_username,
                 email=email,
+
                 github_id=github_id,
                 github_username=github_username,
                 github_profile=github_profile,
+
                 avatar=avatar,
+
+                is_username_set=False,
                 is_email_verified=True if email else False,
                 is_profile_completed=False
             )

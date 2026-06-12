@@ -15,6 +15,6 @@ urlpatterns = [
     path("google/callback/",google_callback_view,name="google-callback"),
 
     # GitHub OAuth
-    path("auth/github/",github_login_view),
-    path("auth/github/callback/",github_callback_view),
+    path("github/",github_login_view),
+    path("github/callback/",github_callback_view),
 ]

@@ -22,6 +22,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         user = User(
             username=validated_data["username"],
             email=validated_data["email"],
+
+            is_username_set=True,
+
             is_email_verified=False,
             is_profile_completed=False
         )
