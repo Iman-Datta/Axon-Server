@@ -1,13 +1,18 @@
 
 from django.urls import path
-from .views import register_view, verify_email_view, refresh_token_view, login_view, logout_view,me_view, google_login_view, google_callback_view, github_login_view, github_callback_view, check_username_view, update_username_view
+from .views import register_view, verify_magiclink_view, refresh_token_view, login_view, logout_view,me_view, google_login_view, google_callback_view, github_login_view, github_callback_view, check_username_view, update_username_view, send_otp_view, verify_email_otp_view, github_connect_view
 
 urlpatterns = [
+    # Core auth
     path("register/", register_view),
-    path("verify-email/", verify_email_view),
     path("refresh/",refresh_token_view),
     path("login/", login_view),
     path("logout/", logout_view),
+
+    # Email
+    path("verify-email/", verify_magiclink_view),
+    path("email/send-otp/", send_otp_view),
+    path("email/verify-otp/", verify_email_otp_view),
 
     # Google OAuth
     path("google/", google_login_view,name="google-login"),
@@ -16,7 +21,9 @@ urlpatterns = [
     # GitHub OAuth
     path("github/",github_login_view),
     path("github/callback/",github_callback_view),
+    path("github/connect/", github_connect_view),
 
+    # Profile
     path("profile/check-username/", check_username_view),
     path("profile/username/", update_username_view),
     path("me/",me_view),

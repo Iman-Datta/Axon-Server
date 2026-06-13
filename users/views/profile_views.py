@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import User
-from ..serializers import UsernameUpdateSerializer, UsernameSerializer
+from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -106,7 +106,8 @@ def update_username_view(request):
                 "errors": serializer.errors
             },
             status=400
-        )    
+        )
+
     user.username = serializer.validated_data["username"]
     user.is_username_set = True
     user.save(update_fields=["username","is_username_set"])
@@ -119,3 +120,56 @@ def update_username_view(request):
         status=200
     )
 
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def complete_profile_view(request):
+
+    user = request.user
+    # identity must be completed first
+    if (
+        not user.is_username_set
+        or not user.is_email_verified
+        or not user.github_id
+    ):
+
+        return Response(
+            {
+                "success": False,
+                "message": "Complete identity setup first."
+            },
+            status=400
+        )
+
+    serializer = CompleteProfileSerializer(
+        user,
+        data=request.data,
+        partial=True
+    )
+
+    if not serializer.is_valid():
+        return Response(
+            {
+                "success": False,
+                "errors": serializer.errors
+            },
+            status=400
+        )
+
+    if not (user.first_name or serializer.validated_data.get("first_name")) or not  (user.last_name or serializer.validated_data.get("last_name")):
+        return Response(
+            {
+                "success": False,
+                "message": "First name and last name required."
+            },
+            status=400
+        )
+
+    serializer.save()
+
+    return Response(
+        {
+            "success": True,
+            "message": "Profile completed successfully."
+        },
+        status=200
+    )
