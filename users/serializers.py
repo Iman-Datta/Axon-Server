@@ -1,3 +1,4 @@
+import re # Automata
 from rest_framework import serializers
 from .models import User
 
@@ -55,3 +56,41 @@ class LoginSerializer(serializers.Serializer):
             )
 
         return value
+
+class UsernameSerializer(serializers.Serializer):
+
+    username = serializers.CharField(min_length=4,max_length=30)
+
+    def validate_username(self, value):
+        value = value.strip().lower()
+
+        pattern = r"^[a-z][a-z0-9_]*[a-z0-9]$"
+        if not re.match(pattern, value):
+            raise serializers.ValidationError(
+                "Invalid username format."
+            )
+
+        return value
+
+class UsernameUpdateSerializer(UsernameSerializer):
+    def validate_username(self, value): # OOPS
+        value = super().validate_username(value)
+
+        user = self.context["user"]
+
+        if User.objects.filter(username__iexact = value).exclude(id=user.id).exists(): # case insensitive
+            raise serializers.ValidationError("Username already exists.")
+        return value
+
+class EmailOTPRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        value = value.lower().strip()
+
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("Email already exists.")
+        return value
+
+class EmailOTPVerifySerializer(serializers.Serializer):
+    otp = serializers.CharField(min_length=6,max_length=6)

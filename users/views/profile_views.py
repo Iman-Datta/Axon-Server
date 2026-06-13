@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import User
+from ..serializers import UsernameUpdateSerializer, UsernameSerializer
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -71,34 +72,49 @@ def onboarding_status_view(request):
     )
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
 def check_username_view(request):
-    username = request.GET.get("username")
-
-
-    if not username:
-        return Response({
+    serializer = UsernameSerializer(data=request.GET)
+    if not serializer.is_valid():
+        return Response(
+            {
                 "success": False,
-                "message": "Username is required."
+                "errors": serializer.errors
             },
             status=400
         )
-    
-    username = username.strip()
-
-    if(len(username) < 4):
-         return Response({            
-                "success": False,
-                "message": "Username must contain at least 4 characters."
-            },
-            status=400
-        )
+    username = serializer.validated_data["username"]
     
     username_exists = User.objects.filter(username__iexact=username).exists()
-
     return Response({
             "success": True,
             "available": not username_exists
+        },
+        status=200
+    )
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def update_username_view(request):
+    user = request.user
+
+    serializer = UsernameUpdateSerializer(data=request.data, context={"user": user})
+
+    if not serializer.is_valid():
+        return Response(
+            {
+                "success": False,
+                "errors": serializer.errors
+            },
+            status=400
+        )    
+    user.username = serializer.validated_data["username"]
+    user.is_username_set = True
+    user.save(update_fields=["username","is_username_set"])
+
+    return Response(
+        {
+            "success": True,
+            "message": "Username updated successfully."
         },
         status=200
     )

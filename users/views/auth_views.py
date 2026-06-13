@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from django.conf import settings
 from ..models import User
-from ..utils.email_verification import send_verification_email
+from ..utils.email_verification import send_magicLink_email
 
 @api_view(['POST'])
 def register_view(request):
@@ -28,7 +28,7 @@ def register_view(request):
 
         user = serializer.save()
 
-        send_verification_email(user)
+        send_magicLink_email(user)
 
         return Response({"message": "Account created. Please verify your email.", "success": True},status=201)
             
@@ -229,7 +229,7 @@ def login_view(request):
             user_obj = User.objects.get(email=identifier)
 
             if not user_obj.is_email_verified:
-                send_verification_email(user_obj)
+                send_magicLink_email(user_obj)
                 return Response(
                     {
                         "success": False,
@@ -261,7 +261,7 @@ def login_view(request):
             user_obj = User.objects.get(username=identifier)
 
             if not user_obj.is_email_verified:
-                send_verification_email(user_obj)
+                send_magicLink_email(user_obj)
 
                 return Response(
                     {
