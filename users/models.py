@@ -34,6 +34,8 @@ class User(AbstractUser):
     email_otp_hash = models.CharField(max_length=255, blank=True, null=True)
     email_otp_expire = models.DateTimeField(blank=True, null=True)
     pending_email = models.EmailField(blank=True, null=True)
+    oauth_state = models.CharField(max_length=255,blank=True,null=True)
+    oauth_state_expire = models.DateTimeField(blank=True,null=True)
 
     # username, first_name, last_name, password, is_active,
     # last_login, date_joined, groups, user_permissions

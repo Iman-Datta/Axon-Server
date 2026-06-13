@@ -45,4 +45,3 @@ def send_email_otp(user, email):
     send_email(
         email, "Your Axon verification code", otp_email_template(otp)
     )
-    
