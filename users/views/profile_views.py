@@ -2,39 +2,44 @@ from rest_framework.decorators import (api_view, permission_classes)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from ..models import User
+from ..serializers import UsernameUpdateSerializer, UsernameSerializer
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def me_view(request):
+    user = request.user
 
-    try:
-        user = request.user
-        
-        user_data = {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
+    user_data = {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
 
-            "first_name": user.first_name,
-            "last_name": user.last_name,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
 
-            "avatar": user.avatar,
-            "bio": user.bio,
+        "avatar": user.avatar,
+        "bio": user.bio,
 
-            "is_username_set": user.is_username_set,
-            "is_email_verified": user.is_email_verified,
-            "is_profile_completed": user.is_profile_completed,
+        "is_username_set": user.is_username_set,
+        "is_email_verified": user.is_email_verified,
+        "is_profile_completed": user.is_profile_completed,
 
-            "github_profile": user.github_profile,
-            "linkedin_profile": user.linkedin_profile,
-            "portfolio_website": user.portfolio_website,
+        "github_profile": user.github_profile,
+        "linkedin_profile": user.linkedin_profile,
+        "portfolio_website": user.portfolio_website,
 
-            "created_at": user.created_at,
-            "updated_at": user.updated_at,
-        }
-        return Response({"user": user_data,"success": True}, status=200)
-    except Exception as e:
-        return Response(
-            {"message": str(e),"success": False},status=500)
+        "created_at": user.created_at,
+        "updated_at": user.updated_at,
+    }
+
+    return Response(
+        {
+            "user": user_data,
+            "success": True
+        },
+        status=200
+    )
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -65,3 +70,52 @@ def onboarding_status_view(request):
         },
         status=200
     )
+
+@api_view(["GET"])
+def check_username_view(request):
+    serializer = UsernameSerializer(data=request.GET)
+    if not serializer.is_valid():
+        return Response(
+            {
+                "success": False,
+                "errors": serializer.errors
+            },
+            status=400
+        )
+    username = serializer.validated_data["username"]
+    
+    username_exists = User.objects.filter(username__iexact=username).exists()
+    return Response({
+            "success": True,
+            "available": not username_exists
+        },
+        status=200
+    )
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def update_username_view(request):
+    user = request.user
+
+    serializer = UsernameUpdateSerializer(data=request.data, context={"user": user})
+
+    if not serializer.is_valid():
+        return Response(
+            {
+                "success": False,
+                "errors": serializer.errors
+            },
+            status=400
+        )    
+    user.username = serializer.validated_data["username"]
+    user.is_username_set = True
+    user.save(update_fields=["username","is_username_set"])
+
+    return Response(
+        {
+            "success": True,
+            "message": "Username updated successfully."
+        },
+        status=200
+    )
+
