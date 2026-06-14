@@ -1,6 +1,6 @@
 
 from django.urls import path
-from .views import register_view, verify_magiclink_view, refresh_token_view, login_view, logout_view,me_view, google_login_view, google_callback_view, github_login_view, github_callback_view, check_username_view, update_username_view, send_otp_view, verify_email_otp_view, github_connect_view
+from .views import register_view, verify_magiclink_view, refresh_token_view, login_view, logout_view,me_view, google_login_view, google_callback_view, github_login_view, github_callback_view, check_username_view, update_username_view, send_otp_view, verify_email_otp_view, github_connect_view, onboarding_status_view, complete_profile_view
 
 urlpatterns = [
     # Core auth
@@ -27,4 +27,6 @@ urlpatterns = [
     path("profile/check-username/", check_username_view),
     path("profile/username/", update_username_view),
     path("me/",me_view),
+    path("onboarding/status/", onboarding_status_view),
+    path("profile/complete/",complete_profile_view),
 ]
