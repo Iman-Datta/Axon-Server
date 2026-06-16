@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import Organization, OrganizationMember
+from ..users.models import User
 
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -52,3 +53,31 @@ class OrganizationSerializer(serializers.ModelSerializer):
 
         instance.save()
         return instance
+    
+class OrganizationMemberSerializer(serializers.ModelSerializer):
+
+    username = serializers.CharField(source="user.username",read_only=True)
+
+    email = serializers.EmailField(source="user.email",read_only=True)
+
+    class Meta:
+        model = OrganizationMember
+
+        fields = [
+            "id",
+            "username",
+            "email",
+            "role",
+            "joined_at",
+        ]
+
+class AddMemberSerializer(serializers.Serializer):
+    username = serializers.CharField()
+
+    def validate_username(self, value):
+        try:
+            user = User.objects.get(username=value)
+            return user
+        except User.DoesNotExist:
+            raise serializers.ValidationError("User not found.")
+        
