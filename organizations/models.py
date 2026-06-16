@@ -30,7 +30,6 @@ class Organization(models.Model):
     def __str__(self):
         return self.name
     
-
 class OrganizationMember(models.Model):
 
     class Role(models.TextChoices):
