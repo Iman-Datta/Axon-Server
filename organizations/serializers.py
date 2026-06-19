@@ -55,9 +55,7 @@ class OrganizationSerializer(serializers.ModelSerializer):
         return instance
     
 class OrganizationMemberSerializer(serializers.ModelSerializer):
-
     username = serializers.CharField(source="user.username",read_only=True)
-
     email = serializers.EmailField(source="user.email",read_only=True)
 
     class Meta:
@@ -73,6 +71,7 @@ class OrganizationMemberSerializer(serializers.ModelSerializer):
 
 class AddMemberSerializer(serializers.Serializer):
     username = serializers.CharField()
+    role = serializers.ChoiceField(choices=OrganizationMember.Role.choices, default=OrganizationMember.Role.MEMBER)
 
     def validate_username(self, value):
         try:
@@ -81,3 +80,7 @@ class AddMemberSerializer(serializers.Serializer):
         except User.DoesNotExist:
             raise serializers.ValidationError("User not found.")
         
+class UpdateMemberRoleSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(
+        choices=OrganizationMember.Role.choices
+    )
