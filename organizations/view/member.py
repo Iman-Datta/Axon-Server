@@ -59,8 +59,13 @@ def add_member(request, slug):
     
     user = serializer.validated_data["username"]
     role = serializer.validated_data["role"]
-
-    already_member = OrganizationMember.objects.filter(organization = organization, user = user)
+    if (role != OrganizationMember.Role.MEMBER and not is_org_owner(request.user, organization)):
+        return Response({
+                "success": False,
+                "message": "Only owner can add admin or owner."
+            },status=403)
+    
+    already_member = OrganizationMember.objects.filter(organization = organization, user = user).exists()
     if already_member:
          return Response({
                 "success": False,
@@ -132,47 +137,17 @@ def update_member_role(request, slug, member_id):
         "member": OrganizationMemberSerializer(member).data
     },status=200)
 
-# @api_view(["DELETE"])
-# @permission_classes([IsAuthenticated])
-# def remove_member(request, slug, member_id):
-#     try:
-#         organization = Organization.objects.get(slug = slug)
-#     except Organization.DoesNotExist:
-#         return Response({
-#             "success": False,
-#             "message": "Organization not found."
-#         }, status=404)
-    
-#     try:
-#         member = OrganizationMember.objects.get(id = member_id, organization = organization)
-#     except OrganizationMember.DoesNotExist:
-#         return Response({
-#                 "success": False,
-#                 "message": "Member not found."
-#             },status=404)
-    
-#     if not is_org_owner(request.user, organization):
-#          return Response({
-#             "success": False,
-#             "message": "Only owner can change roles."
-#         },status=403)
     
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def remove_member(request, slug, member_id):
-
     try:
-        organization = Organization.objects.get(
-            slug=slug
-        )
-
+        organization = Organization.objects.get(slug=slug)
     except Organization.DoesNotExist:
-
         return Response({
             "success": False,
             "message": "Organization not found."
         }, status=404)
-
 
     try:
         member = OrganizationMember.objects.get(
@@ -181,46 +156,61 @@ def remove_member(request, slug, member_id):
         )
 
     except OrganizationMember.DoesNotExist:
-
         return Response({
             "success": False,
             "message": "Member not found."
         }, status=404)
 
-
-    if not is_org_owner(
-        request.user,
-        organization
-    ):
-
+    if not is_org_owner(request.user,organization):
         return Response({
             "success": False,
             "message": "Only owner can remove members."
         }, status=403)
 
-
-
     if member.role == OrganizationMember.Role.OWNER:
-
-        owner_count = OrganizationMember.objects.filter(
-            organization=organization,
-            role=OrganizationMember.Role.OWNER
-        ).count()
-
-
+        owner_count = OrganizationMember.objects.filter(organization=organization,role=OrganizationMember.Role.OWNER).count()        
         if owner_count == 1:
-
             return Response({
                 "success": False,
                 "message": "Organization must have at least one owner."
             }, status=400)
 
-
-
     member.delete()
-
 
     return Response({
         "success": True,
         "message": "Member removed successfully."
+    }, status=200)
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+def leave_org(request, slug):
+    try:
+        organization = Organization.objects.get(slug = slug)
+    except Organization.DoesNotExist:
+        return Response({
+            "success": False,
+            "message": "Organization not found."
+        }, status=404)
+    
+    try:
+        member = OrganizationMember.objects.get(organization = organization, user = request.user)
+    except OrganizationMember.DoesNotExist:
+        return Response({
+            "success": False,
+            "message": "You are not a member of this organization."
+        }, status=403)
+    
+    if member.role == OrganizationMember.Role.OWNER:
+        owner_count = OrganizationMember.objects.filter(organization=organization,role=OrganizationMember.Role.OWNER).count()        
+        if owner_count == 1:
+            return Response({
+                "success": False,
+                "message": "Organization must have at least one owner."
+            }, status=400)
+        
+    member.delete()
+    return Response({
+        "success": True,
+        "message": "You left the organization successfully."
     }, status=200)
