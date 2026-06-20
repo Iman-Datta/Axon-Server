@@ -40,9 +40,9 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'rest_framework_simplejwt',
-    'corsheaders'
+    'corsheaders',
     'users.apps.UsersConfig',
-    'organizations.apps.OrganizationsConfig'
+    'organizations.apps.OrganizationsConfig',
 ]
 
 MIDDLEWARE = [

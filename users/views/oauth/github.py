@@ -7,6 +7,7 @@ from datetime import timedelta
 from rest_framework.decorators import (api_view, permission_classes)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework.response import Response
 
 
 from django.shortcuts import redirect
@@ -262,4 +263,11 @@ def github_connect_view(request):
         )
     )
 
-    return redirect(github_url)
+    return Response(
+    {
+        "success": True,
+        "url": github_url
+    },
+    status=200
+)
+
