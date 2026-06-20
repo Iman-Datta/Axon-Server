@@ -68,7 +68,6 @@ def onboarding_status_view(request):
                     "email": email_status,
                     "github": github_status,
                 },
-
                 "data": {
                     "username": user.username if username_status else None,
 
