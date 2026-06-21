@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import User
-from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer
+from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer,PublicProfileSerializer
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -196,3 +196,17 @@ def complete_profile_view(request):
         },
         status=200
     )
+
+@api_view(["GET"])
+def public_profile_view(request,username):
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            return Response({"message":"User not found"},status=404)
+
+        serializer = PublicProfileSerializer(user)
+
+        return Response({
+            "success": True,
+            "data": serializer.data
+        },status=200)
