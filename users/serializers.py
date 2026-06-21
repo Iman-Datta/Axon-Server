@@ -179,3 +179,21 @@ class CompleteProfileSerializer(serializers.ModelSerializer):
             instance.save(update_fields=update_fields)
 
         return instance
+
+class PublicProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "avatar",
+            "bio",
+            "github_username",
+            "github_profile",
+            "linkedin_profile",
+            "portfolio_website",
+        ]
+        
