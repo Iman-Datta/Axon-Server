@@ -144,7 +144,7 @@ def google_callback_view(request):
             ]
         )
 
-        response = redirect(f"{settings.FRONTEND_URL}/dashboard")
+        response = redirect(  f"{settings.FRONTEND_URL}/callback?status=success")
 
         response.set_cookie(
             key="refresh_token",

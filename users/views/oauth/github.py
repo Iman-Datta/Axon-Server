@@ -215,7 +215,7 @@ def github_callback_view(request):
                 ]
             )
 
-            response = redirect(f"{settings.FRONTEND_URL}/dashboard")
+            response = redirect(f"{settings.FRONTEND_URL}/callback")
             response.set_cookie(
                 key="refresh_token",
                 value=refresh_token,
@@ -236,7 +236,7 @@ def github_connect_view(request):
     user = request.user
 
     if user.github_id:
-        return redirect(f"{settings.FRONTEND_URL}/dashboard")
+        return redirect(f"{settings.FRONTEND_URL}/callback")
     
     state = secrets.token_urlsafe(32)
 

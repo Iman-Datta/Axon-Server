@@ -107,20 +107,15 @@ def verify_email_otp_view(request):
 
 @api_view(["GET"])
 def verify_magiclink_view(request):
-
     raw_token = request.GET.get("token")
-
-
     def redirect_callback(status, message):
         params = urlencode({
             "status": status,
             "message": message
         })
-
         return redirect(
             f"{settings.FRONTEND_URL}/email-callback?{params}"
         )
-
 
     # Token missing
     if not raw_token:
@@ -129,12 +124,9 @@ def verify_magiclink_view(request):
             "Verification token is missing."
         )
 
-
     hashed_token = hashlib.sha256(
         raw_token.encode()
     ).hexdigest()
-
-
     # Find user
     try:
         user = User.objects.get(
@@ -147,8 +139,7 @@ def verify_magiclink_view(request):
             "failed",
             "Verification link is invalid or already used."
         )
-
-
+    
     # Already verified
     if user.is_email_verified:
 
@@ -156,7 +147,6 @@ def verify_magiclink_view(request):
             "success",
             "Your email is already verified."
         )
-
 
     # Token expired
     if (
@@ -174,12 +164,10 @@ def verify_magiclink_view(request):
             ]
         )
 
-
         return redirect_callback(
             "expired",
             "Verification link expired. Please request a new one."
         )
-
 
     # Verify user
     user.is_email_verified = True
@@ -188,19 +176,15 @@ def verify_magiclink_view(request):
 
     user.email_verification_expire = None
 
-
-
     # Create JWT refresh token
     refresh = RefreshToken.for_user(user)
 
     refresh_token = str(refresh)
 
-
     # Store hashed refresh token
     user.refresh_token_hash = hashlib.sha256(
         refresh_token.encode()
     ).hexdigest()
-
 
     user.save(
         update_fields=[
@@ -211,13 +195,10 @@ def verify_magiclink_view(request):
         ]
     )
 
-
-
     response = redirect_callback(
         "success",
         "Email verified successfully."
     )
-
 
     # Store refresh cookie
     response.set_cookie(
@@ -228,6 +209,4 @@ def verify_magiclink_view(request):
         samesite="Lax",
         max_age=7 * 24 * 60 * 60
     )
-
-
     return response
