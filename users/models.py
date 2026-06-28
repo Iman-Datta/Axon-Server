@@ -43,12 +43,12 @@ class User(AbstractUser):
     # last_login, date_joined, groups, user_permissions
 
 class Workspace(models.Model):
-    WORKSPACE_TYPES = [
-        ("personal", "Personal"),
-        ("organization", "Organization"),
-    ]
+
+    class Type(models.TextChoices):
+        PERSONAL = "personal", "Personal"
+        ORGANIZATION = "organization", "Organization"
     
-    type = models.CharField(max_length=20,choices=WORKSPACE_TYPES)
+    type = models.CharField(max_length=20,choices=Type.choices)
     owner = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
