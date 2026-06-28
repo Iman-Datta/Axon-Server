@@ -1,74 +1,8 @@
-from django.conf import settings
+
 from django.db import models
-from django.core.exceptions import ValidationError
 from django.utils.text import slugify
-
-from organizations.models import Organization
-
-
-class Workspace(models.Model):
-    WORKSPACE_TYPES = [
-        ("personal", "Personal"),
-        ("organization", "Organization"),
-    ]
-    
-    type = models.CharField(
-        max_length=20,
-        choices=WORKSPACE_TYPES,
-    )
-
-    owner = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="workspace",
-        null=True,
-        blank=True,
-    )
-
-    organization = models.OneToOneField(
-        Organization,
-        on_delete=models.CASCADE,
-        related_name="workspace",
-        null=True,
-        blank=True,
-    )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True,
-    )
-
-    def clean(self):
-        if self.type == "personal":
-            if not self.owner:
-                raise ValidationError(
-                    "Personal workspace must have an owner."
-                )
-
-            if self.organization:
-                raise ValidationError(
-                    "Personal workspace cannot have an organization."
-                )
-
-        elif self.type == "organization":
-            if not self.organization:
-                raise ValidationError(
-                    "Organization workspace must have an organization."
-                )
-
-            if self.owner:
-                raise ValidationError(
-                    "Organization workspace cannot have an owner."
-                )
-
-    def __str__(self):
-        if self.type == "personal":
-            return self.owner.username
-
-        return self.organization.name
+from ..users.models import Workspace
+from django.conf import settings
 
 
 class Project(models.Model):
@@ -77,37 +11,23 @@ class Project(models.Model):
         ("private", "Private"),
     ]
 
-    workspace = models.ForeignKey(
-        Workspace,
-        on_delete=models.CASCADE,
-        related_name="projects",
-    )
+    workspace = models.ForeignKey(Workspace,on_delete=models.CASCADE,related_name="projects",)
 
-    name = models.CharField(
-        max_length=100,
-    )
-
-    slug = models.SlugField(
-        max_length=100,
-        editable=False,
-    )
-
+    name = models.CharField(max_length=100,)
+    slug = models.SlugField(max_length=100,editable=False,)
     description = models.TextField(blank=True,)
-    visibility = models.CharField(
-        max_length=10,
-        choices=VISIBILITY_CHOICES,
-        default="private",
-    )
+    visibility = models.CharField(max_length=10,choices=VISIBILITY_CHOICES,default="private",)
 
-    github_repository = models.URLField(blank=True)
     website = models.URLField(blank=True)
+
     is_archived = models.BooleanField(default=False,)
+
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete = models.SET_NULL, null=True, related_name="created_organizations")
     created_at = models.DateTimeField(auto_now_add=True,)
     updated_at = models.DateTimeField(auto_now=True,)
 
     class Meta:
         ordering = ["-created_at"]
-
         constraints = [
             models.UniqueConstraint(
                 fields=["workspace", "slug"],
@@ -123,3 +43,41 @@ class Project(models.Model):
 
     def __str__(self):
         return self.name
+    
+class ProjectMember(models.Model):
+    class Role(models.TextChoices):
+        OWNER = "OWNER", "Owner"
+        VIEWER = "VIEWER", "Viewer"
+        EDITOR = "EDITOR", "Editor"
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE,related_name="members")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="project_memberships"
+    )
+    role = models.CharField(max_length=20, choices= Role.choices, default=Role.VIEWER)
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project","user"],
+                name="unique_project_member"
+            )
+        ]
+
+class GitRepository(models.Model):
+
+    project = models.OneToOneField(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="git_repository"
+    )
+
+    provider = models.CharField(max_length=20,default="github")
+    github_repo_id = models.BigIntegerField(unique=True)
+    owner = models.CharField(max_length=100)
+    repo_name = models.CharField(max_length=100)
+    webhook_secret = models.CharField(max_length=255)
+    installation_id = models.BigIntegerField(null=True,blank=True)
+
+    is_active = models.BooleanField(default=True)
