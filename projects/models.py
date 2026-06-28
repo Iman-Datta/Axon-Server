@@ -18,11 +18,11 @@ class Project(models.Model):
     description = models.TextField(blank=True,)
     visibility = models.CharField(max_length=10,choices=VISIBILITY_CHOICES,default="private",)
 
-    github_repository = models.URLField(blank=True)
     website = models.URLField(blank=True)
 
     is_archived = models.BooleanField(default=False,)
 
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete = models.SET_NULL, null=True, related_name="created_organizations")
     created_at = models.DateTimeField(auto_now_add=True,)
     updated_at = models.DateTimeField(auto_now=True,)
 
@@ -64,3 +64,20 @@ class ProjectMember(models.Model):
                 name="unique_project_member"
             )
         ]
+
+class GitRepository(models.Model):
+
+    project = models.OneToOneField(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="git_repository"
+    )
+
+    provider = models.CharField(max_length=20,default="github")
+    github_repo_id = models.BigIntegerField(unique=True)
+    owner = models.CharField(max_length=100)
+    repo_name = models.CharField(max_length=100)
+    webhook_secret = models.CharField(max_length=255)
+    installation_id = models.BigIntegerField(null=True,blank=True)
+
+    is_active = models.BooleanField(default=True)
