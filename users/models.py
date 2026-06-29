@@ -43,13 +43,12 @@ class User(AbstractUser):
     # last_login, date_joined, groups, user_permissions
 
 class Workspace(models.Model):
-    WORKSPACE_TYPES = [
-        ("personal", "Personal"),
-        ("organization", "Organization"),
-    ]
+
+    class Type(models.TextChoices):
+        PERSONAL = "personal", "Personal"
+        ORGANIZATION = "organization", "Organization"
     
-    type = models.CharField(max_length=20,choices=WORKSPACE_TYPES,)
-    
+    type = models.CharField(max_length=20,choices=Type.choices)
     owner = models.OneToOneField(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -65,15 +64,9 @@ class Workspace(models.Model):
         null=True,
         blank=True,
     )
-
-    created_at = models.DateTimeField(
-        auto_now_add=True,
-    )
-
-    updated_at = models.DateTimeField(
-        auto_now=True,
-    )
-
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def clean(self):
         if self.type == "personal":
@@ -97,6 +90,10 @@ class Workspace(models.Model):
                 raise ValidationError(
                     "Organization workspace cannot have an owner."
                 )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         if self.type == "personal":

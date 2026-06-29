@@ -1,4 +1,3 @@
-
 from django.db import models
 from django.utils.text import slugify
 from users.models import Workspace
@@ -37,8 +36,16 @@ class Project(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
-
+            base_slug = slugify(self.name)
+            slug = base_slug
+            counter = 1
+            while Project.objects.filter(
+                workspace=self.workspace,
+                slug=slug
+            ).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -75,7 +82,7 @@ class GitRepository(models.Model):
 
     provider = models.CharField(max_length=20,default="github")
     github_repo_id = models.BigIntegerField(unique=True)
-    owner = models.CharField(max_length=100)
+    repository_owner = models.CharField(max_length=100)
     repo_name = models.CharField(max_length=100)
     webhook_secret = models.CharField(max_length=255)
     installation_id = models.BigIntegerField(null=True,blank=True)
