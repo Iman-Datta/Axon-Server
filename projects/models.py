@@ -1,7 +1,7 @@
 
 from django.db import models
 from django.utils.text import slugify
-from ..users.models import Workspace
+from users.models import Workspace
 from django.conf import settings
 
 
@@ -22,7 +22,7 @@ class Project(models.Model):
 
     is_archived = models.BooleanField(default=False,)
 
-    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete = models.SET_NULL, null=True, related_name="created_organizations")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete = models.SET_NULL, null=True, related_name="created_projects")
     created_at = models.DateTimeField(auto_now_add=True,)
     updated_at = models.DateTimeField(auto_now=True,)
 
