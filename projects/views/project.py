@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
 
-from ..serializers.project import ProjectCreateSerializer, ProjectListSerializer, ProjectDetailSerializer
+from ..serializers.project import ProjectCreateSerializer, ProjectListSerializer, ProjectDetailSerializer, ProjectUpdateSerializer
 from ..decorators import resolve_workspace, resolve_project
 from ..models import Project, ProjectMember
 from organizations.permissions import has_admin_permission
@@ -76,3 +76,18 @@ def project_detail_view(request, slug, project_slug):
             "project": serializer.data,
         }
     )
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+@resolve_workspace
+@resolve_project
+def project_update_view(request, slug, project_slug):
+        serializer = ProjectUpdateSerializer(request.project, data = request.data,partial = True)
+        if not serializer.is_valid():
+            return Response({"success": False,"errors": serializer.errors},status=400)
+        serializer.save()
+        return Response({
+            "success": True,
+            "message": "Organization updated successfully.",
+            "organization": serializer.data
+        },status=200)
