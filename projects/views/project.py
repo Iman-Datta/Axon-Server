@@ -3,8 +3,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
 
-from ..serializers.project import ProjectCreateSerializer
-from ..decorators import resolve_workspace
+from ..serializers.project import ProjectCreateSerializer, ProjectListSerializer, ProjectDetailSerializer
+from ..decorators import resolve_workspace, resolve_project
 from ..models import Project, ProjectMember
 from organizations.permissions import has_admin_permission
 
@@ -49,3 +49,30 @@ def create_project_view(request, slug):
                 "slug": project.slug,
             }
         },status=201)
+
+@api_view(["GET"])
+@resolve_workspace
+def list_projects_view(request, slug):
+    workspace = request.workspace
+    
+    projects = (Project.objects.filter(workspace=workspace, is_archived=False).select_related("created_by"))
+
+    serializer = ProjectListSerializer(projects, many=True)
+    return Response({
+                "message": "Projects fetched successfully.",
+                "projects": serializer.data,
+            },status=200)
+
+@api_view(["GET"])
+@resolve_workspace
+@resolve_project
+def project_detail_view(request, slug, project_slug):
+
+    serializer = ProjectDetailSerializer(request.project)
+
+    return Response(
+        {
+            "message": "Project fetched successfully.",
+            "project": serializer.data,
+        }
+    )
