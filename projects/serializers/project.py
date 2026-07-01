@@ -2,7 +2,6 @@ from rest_framework import serializers
 
 from projects.models import Project
 
-
 class ProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Project
@@ -10,29 +9,73 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
             "name",
             "description",
             "visibility",
-            "github_repository",
             "website",
+        ]
+
+class ProjectListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "description",
+            "visibility",
+            "website",
+            "created_at",
+            "updated_at",
+        ]
+
+class ProjectDetailSerializer(serializers.ModelSerializer):
+    created_by = serializers.CharField(source="created_by.username",read_only=True)
+    workspace_type = serializers.CharField(source="workspace.type",read_only=True)
+
+    class Meta:
+        model = Project
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "description",
+            "visibility",
+            "website",
+            "is_archived",
+            "created_by",
+            "workspace_type",
+            "created_at",
+            "updated_at",
+        ]
+
+class ProjectUpdateSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Project
+        fields = [
+            "name",
+            "description",
+            "visibility",
+            "website",
+            "is_archived",
+        ]
+
+        read_only_fields = [
+            "id",
+            "slug",
+            "created_at",
+            "updated_at",
         ]
 
     def validate_name(self, value):
         value = value.strip()
-        if not value:
-            raise serializers.ValidationError("Project name is required.")
+
+        if len(value) < 3:
+            raise serializers.ValidationError("Organization name too short.")
         return value
 
-    def validate_visibility(self, value):
-        valid_choices = [
-            choice[0]
-            for choice in Project.VISIBILITY_CHOICES
-        ]
-        if value not in valid_choices:
-            raise serializers.ValidationError("Invalid visibility.")
-        return value
+    def update(self, instance, validated_data):
+        instance.name = validated_data.get("name",instance.name)
+        instance.description = validated_data.get("description",instance.description)
 
-    def validate_github_repository(self, value):
-        if value and not value.startswith("https://github.com/"):
-            raise serializers.ValidationError("Enter a valid GitHub repository URL.")
-        return value
-
-    def validate_website(self, value):
-        return value.strip()
+        instance.save()
+        return instance

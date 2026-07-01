@@ -1,7 +1,7 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
-from ..organizations.models import Organization
+from organizations.models import Organization
 from django.core.exceptions import ValidationError
 
 class User(AbstractUser):

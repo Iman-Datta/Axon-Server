@@ -1,6 +1,6 @@
 from django.db import models
 from django.utils.text import slugify
-from ..users.models import Workspace
+from users.models import Workspace
 from django.conf import settings
 
 
