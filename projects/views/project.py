@@ -6,7 +6,7 @@ from django.db import transaction
 from ..serializers.project import ProjectCreateSerializer, ProjectListSerializer, ProjectDetailSerializer, ProjectUpdateSerializer
 from ..decorators import resolve_workspace, resolve_project
 from ..models import Project, ProjectMember
-from organizations.permissions import has_admin_permission
+from organizations.permissions import has_admin_permission, get_org_member
 
 
 @api_view(["POST"])
@@ -51,30 +51,101 @@ def create_project_view(request, slug):
         },status=201)
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 @resolve_workspace
 def list_projects_view(request, slug):
     workspace = request.workspace
-    
-    projects = (Project.objects.filter(workspace=workspace, is_archived=False).select_related("created_by"))
+
+    # Personal Workspace
+    if workspace.type == workspace.Type.PERSONAL:
+        if workspace.owner != request.user:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Permission denied.",
+                },
+                status=403,
+            )
+
+    # Organization Workspace
+    else:
+        if not get_org_member(request.user, workspace.organization):
+            return Response(
+                {
+                    "success": False,
+                    "message": "User is not a member of this organization.",
+                },
+                status=403,
+            )
+
+    projects = (
+        Project.objects.filter(
+            workspace=workspace,
+            is_archived=False,
+        )
+        .select_related("created_by")
+    )
 
     serializer = ProjectListSerializer(projects, many=True)
-    return Response({
-                "message": "Projects fetched successfully.",
-                "projects": serializer.data,
-            },status=200)
+
+    return Response(
+        {
+            "success": True,
+            "message": "Projects fetched successfully.",
+            "projects": serializer.data,
+        },
+        status=200,
+    )
 
 @api_view(["GET"])
+@permission_classes([IsAuthenticated])
 @resolve_workspace
 @resolve_project
 def project_detail_view(request, slug, project_slug):
+
+    workspace = request.workspace
+
+    # Personal Workspace
+    if workspace.type == workspace.Type.PERSONAL:
+        if workspace.owner != request.user:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Permission denied.",
+                },
+                status=403,
+            )
+
+    # Organization Workspace
+    else:
+        if not get_org_member(request.user, workspace.organization):
+            return Response(
+                {
+                    "success": False,
+                    "message": "User is not a member of this organization.",
+                },
+                status=403,
+            )
+
+    # Project Permission
+    if not is_project_member(request.user, request.project):
+        return Response(
+            {
+                "success": False,
+                "message": "User is not a member of this project.",
+            },
+            status=403,
+        )
 
     serializer = ProjectDetailSerializer(request.project)
 
     return Response(
         {
+            "success": True,
             "message": "Project fetched successfully.",
             "project": serializer.data,
-        }
+        },
+        status=200,
     )
 
 @api_view(["PATCH"])
@@ -96,4 +167,3 @@ def project_update_view(request, project_slug):
             "message": "Project updated successfully.",
             "project": serializer.data,
         },status=200,)
-
