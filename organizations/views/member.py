@@ -53,7 +53,7 @@ def add_member(request, slug):
     serializer = AddMemberSerializer(data=request.data)
     if not serializer.is_valid():
         return Response({
-             "success": False,
+            "success": False,
             "errors": serializer.errors
         }, status=400)
     

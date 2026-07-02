@@ -54,8 +54,9 @@ class Project(models.Model):
 class ProjectMember(models.Model):
     class Role(models.TextChoices):
         OWNER = "OWNER", "Owner"
+        LEAD = "LEAD", "Lead"
+        DEVELOPER = "DEVELOPER", "Developer"
         VIEWER = "VIEWER", "Viewer"
-        EDITOR = "EDITOR", "Editor"
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE,related_name="members")
     user = models.ForeignKey(
@@ -64,6 +65,8 @@ class ProjectMember(models.Model):
         related_name="project_memberships"
     )
     role = models.CharField(max_length=20, choices= Role.choices, default=Role.VIEWER)
+    joined_at = models.DateTimeField(auto_now_add=True)
+    
     class Meta:
         constraints = [
             models.UniqueConstraint(
