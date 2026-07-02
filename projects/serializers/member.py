@@ -49,3 +49,12 @@ class ProjectMemberListSerializer(serializers.ModelSerializer):
             "role",
             "joined_at",
         ]
+
+class UpdateMemberRoleSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=ProjectMember.Role.choices)
+
+    def validate_role(self, value):
+        if value == ProjectMember.Role.OWNER:
+            raise serializers.ValidationError("Ownership cannot be assigned using this endpoint.")
+
+        return value
