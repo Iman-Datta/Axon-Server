@@ -70,12 +70,5 @@ class ProjectUpdateSerializer(serializers.ModelSerializer):
         value = value.strip()
 
         if len(value) < 3:
-            raise serializers.ValidationError("Organization name too short.")
+            raise serializers.ValidationError("Project name too short.")
         return value
-
-    def update(self, instance, validated_data):
-        instance.name = validated_data.get("name",instance.name)
-        instance.description = validated_data.get("description",instance.description)
-
-        instance.save()
-        return instance

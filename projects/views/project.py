@@ -79,15 +79,21 @@ def project_detail_view(request, slug, project_slug):
 
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
-@resolve_workspace
 @resolve_project
-def project_update_view(request, slug, project_slug):
-        serializer = ProjectUpdateSerializer(request.project, data = request.data,partial = True)
-        if not serializer.is_valid():
-            return Response({"success": False,"errors": serializer.errors},status=400)
-        serializer.save()
-        return Response({
+def project_update_view(request, project_slug):
+    serializer = ProjectUpdateSerializer(request.project,data=request.data,partial=True)
+
+    if not serializer.is_valid():
+        return Response(
+            {"success": False, "errors": serializer.errors},
+            status=400
+        )
+    
+    serializer.save()
+
+    return Response({
             "success": True,
-            "message": "Organization updated successfully.",
-            "organization": serializer.data
-        },status=200)
+            "message": "Project updated successfully.",
+            "project": serializer.data,
+        },status=200,)
+
