@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'users.apps.UsersConfig',
     'organizations.apps.OrganizationsConfig',
     'projects.apps.ProjectsConfig',
+    'tickets.apps.TicketsConfig',
 ]
 
 MIDDLEWARE = [

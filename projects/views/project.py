@@ -7,6 +7,7 @@ from ..serializers.project import ProjectCreateSerializer, ProjectListSerializer
 from ..decorators import resolve_workspace, resolve_project
 from ..models import Project, ProjectMember
 from organizations.permissions import has_admin_permission, get_org_member
+from ..permissions import is_project_member
 
 
 @api_view(["POST"])
@@ -150,20 +151,113 @@ def project_detail_view(request, slug, project_slug):
 
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
+@resolve_workspace
 @resolve_project
-def project_update_view(request, project_slug):
-    serializer = ProjectUpdateSerializer(request.project,data=request.data,partial=True)
+def project_update_view(request, slug, project_slug):
+    organization = request.workspace.organization
+
+    # Organization permission
+    if organization:
+        if not get_org_member(request.user, organization):
+            return Response(
+                {
+                    "success": False,
+                    "message": "User is not a member of this organization.",
+                },
+                status=403,
+            )
+
+    member = is_project_member(request.user, request.project)
+
+    if member is None:
+        return Response(
+            {
+                "success": False,
+                "message": "User is not a member of this project.",
+            },
+            status=403,
+        )
+
+    if member.role != ProjectMember.Role.OWNER:
+        return Response(
+            {
+                "success": False,
+                "message": "Only the project owner can update the project.",
+            },
+            status=403,
+        )
+
+    serializer = ProjectUpdateSerializer(
+        request.project,
+        data=request.data,
+        partial=True,
+    )
 
     if not serializer.is_valid():
         return Response(
-            {"success": False, "errors": serializer.errors},
-            status=400
+            {
+                "success": False,
+                "errors": serializer.errors,
+            },
+            status=400,
         )
-    
+
     serializer.save()
 
-    return Response({
+    return Response(
+        {
             "success": True,
             "message": "Project updated successfully.",
             "project": serializer.data,
-        },status=200,)
+        },
+        status=200,
+    )
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+@resolve_workspace
+@resolve_project
+def delete_project(request, slug, project_slug):
+
+    organization = request.workspace.organization
+
+    if organization:
+        if not get_org_member(request.user, organization):
+            return Response(
+                {
+                    "success": False,
+                    "message": "User is not a member of this organization.",
+                },
+                status=403,
+            )
+
+    member = is_project_member(request.user, request.project)
+
+    if member is None:
+        return Response(
+            {
+                "success": False,
+                "message": "User is not a member of this project.",
+            },
+            status=403,
+        )
+
+    if member.role != ProjectMember.Role.OWNER:
+        return Response(
+            {
+                "success": False,
+                "message": "Only the project owner can delete the project.",
+            },
+            status=403,
+        )
+
+    request.project.is_archived = True
+    request.project.save(update_fields=["is_archived"])
+
+    return Response(
+        {
+            "success": True,
+            "message": "Project archived successfully.",
+        },
+        status=200,
+    )

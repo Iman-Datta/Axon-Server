@@ -137,7 +137,6 @@ def update_member_role(request, slug, member_id):
         "member": OrganizationMemberSerializer(member).data
     },status=200)
 
-    
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def remove_member(request, slug, member_id):
