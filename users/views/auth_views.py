@@ -30,11 +30,6 @@ def register_view(request):
 @api_view(['POST'])
 def refresh_token_view(request):
     refresh_token = request.COOKIES.get("refresh_token")
-
-    # Debug
-    print("Cookies:", request.COOKIES)
-    print("Refresh:", request.COOKIES.get("refresh_token"))
-
     if not refresh_token:
         return Response({"message": "Refresh token missing", "success": False}, status=401)
     
@@ -50,10 +45,6 @@ def refresh_token_view(request):
             return Response({"message": "User not found", "success": False}, status=404)
         
         hashed_refresh= hashlib.sha256(refresh_token.encode()).hexdigest()
-
-        # Debug
-        print("DB :", user.refresh_token_hash)
-        print("REQ:", hashed_refresh)
 
         if user.refresh_token_hash != hashed_refresh:
             user.refresh_token_hash = None
