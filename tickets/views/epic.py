@@ -2,15 +2,16 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from projects.permissions import has_lead_permission, is_project_member, is_project_owner
-from projects.decorators import resolve_project
+from projects.decorators import resolve_project,resolve_workspace
 from ..serializers.epic import EpicSerializer
 from ..models import Epic
 
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@resolve_workspace
 @resolve_project
-def create_epic(request):    
+def create_epic(request, slug, project_slug):    
     if not has_lead_permission(request.user, request.project):
         return Response({
             "success": False,
@@ -37,8 +38,9 @@ def create_epic(request):
     
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
+@resolve_workspace
 @resolve_project
-def update_epic(request, epic_id):
+def update_epic(request, slug, project_slug, epic_id):
     if not has_lead_permission(request.user, request.project):
         return Response({
                 "success": False,
@@ -81,8 +83,9 @@ def update_epic(request, epic_id):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+@resolve_workspace
 @resolve_project
-def list_epics(request):
+def list_epics(request, slug, project_slug):
     if not is_project_member(request.user, request.project):
         return Response({
                 "success": False,
@@ -100,8 +103,9 @@ def list_epics(request):
 
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
+@resolve_workspace
 @resolve_project
-def delete_epic(request, epic_id):
+def delete_epic(request, slug, project_slug, epic_id):
 
     if not is_project_owner(request.user, request.project):
         return Response({
