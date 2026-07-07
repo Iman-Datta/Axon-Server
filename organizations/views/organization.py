@@ -3,6 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from ..serializers import OrganizationSerializer
 from ..models import Organization, OrganizationMember
+from ..permissions import has_admin_permission, is_org_owner
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -58,6 +59,12 @@ def update_org(request, slug):
             "success": False,
             "message": "Organization not found."
         }, status=400)
+
+    if not has_admin_permission(request.user, organization):
+        return Response({
+                "success": False,
+                "message": "Permission denied."
+            },status=403)
     
     serializer = OrganizationSerializer(
         organization,
@@ -97,21 +104,12 @@ def delete_org(request, slug):
             status=404
         )
 
-    is_owner = OrganizationMember.objects.filter(
-        organization=organization,
-        user=request.user,
-        role=OrganizationMember.Role.OWNER
-    ).exists()
-
-    if not is_owner:
-        return Response(
-            {
+    if not is_org_owner(request.user, organization):
+        return Response({
                 "success": False,
-                "message": "Only owner can delete organization."
-            },
-            status=403
-        )
-    
+                "message": "Permission denied."
+            },status=403)
+        
     organization.delete()
 
     return Response(
