@@ -187,12 +187,7 @@ def login_view(request):
                 "username": user.username,
                 "email": user.email,
 
-                "avatar": (
-                    user.avatar.url
-                    if user.avatar
-                    else None
-                ),
-
+                "avatar": user.avatar if user.avatar else None,
                 "bio": user.bio,
 
                 "is_username_set": user.is_username_set,
