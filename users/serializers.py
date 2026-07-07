@@ -4,35 +4,41 @@ from rest_framework import serializers
 from .models import User
 
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True,min_length=8)
 
     class Meta:
         model = User
-        fields = ["username", "email", "password"]
+        fields = [
+            "username",
+            "email",
+            "password",
+        ]
 
     def validate_email(self, value):
-        if User.objects.filter(email = value).exists():
+        value = value.strip().lower()
+
+        if User.objects.filter(email__iexact=value).exists():
             raise serializers.ValidationError("Email already exists.")
         return value
-    
+
     def validate_username(self, value):
-        if User.objects.filter(username = value).exists():
-            raise serializers.ValidationError("Username already exists")
+        # Reuse the common username validation
+        value = UsernameSerializer().validate_username(value)
+
+        if User.objects.filter(username__iexact=value).exists():
+            raise serializers.ValidationError("Username already exists.")
         return value
-    
+
     def create(self, validated_data):
         user = User(
             username=validated_data["username"],
             email=validated_data["email"],
-
             is_username_set=True,
-
             is_email_verified=False,
-            is_profile_completed=False
+            is_profile_completed=False,
         )
 
         user.set_password(validated_data["password"])
-
         user.save()
         return user
     
@@ -67,10 +73,7 @@ class UsernameSerializer(serializers.Serializer):
 
         pattern = r"^[a-z][a-z0-9_]*[a-z0-9]$"
         if not re.match(pattern, value):
-            raise serializers.ValidationError(
-                "Invalid username format."
-            )
-
+            raise serializers.ValidationError("Invalid username format.")
         return value
 
 class UsernameUpdateSerializer(UsernameSerializer):
