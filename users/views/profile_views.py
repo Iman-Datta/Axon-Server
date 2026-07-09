@@ -135,13 +135,11 @@ def update_username_view(request):
     user.is_username_set = True
     user.save(update_fields=["username","is_username_set"])
 
-    return Response(
-        {
-            "success": True,
-            "message": "Username updated successfully."
-        },
-        status=200
-    )
+    return Response({
+        "success": True,
+        "message": "Username updated successfully.",
+        "user": PublicProfileSerializer(user).data
+    },status=200)
 
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
@@ -152,7 +150,6 @@ def complete_profile_view(request):
     if (
         not user.is_username_set
         or not user.is_email_verified
-        or not user.github_id
     ):
 
         return Response(

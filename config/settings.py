@@ -1,4 +1,5 @@
 import os
+import dj_database_url
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
@@ -94,7 +95,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-
+# Development server
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -105,6 +106,13 @@ DATABASES = {
         'PORT': os.getenv('DB_PORT'),
     }
 }
+
+# Production Server
+# DATABASES = {
+#     "default": dj_database_url.parse(
+#         os.getenv("DATABASE_URL")
+#     )
+# }
 
 
 AUTH_PASSWORD_VALIDATORS = [
