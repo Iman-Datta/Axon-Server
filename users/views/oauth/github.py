@@ -270,4 +270,3 @@ def github_connect_view(request):
     },
     status=200
 )
-
