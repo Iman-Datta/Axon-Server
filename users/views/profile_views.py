@@ -3,42 +3,19 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import User
-from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer,PublicProfileSerializer
+from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer,PublicProfileSerializer, MeSerializer
 
-@api_view(['GET'])
+@api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def me_view(request):
-    user = request.user
-
-    user_data = {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-
-        "first_name": user.first_name,
-        "last_name": user.last_name,
-
-        "avatar": user.avatar,
-        "bio": user.bio,
-
-        "is_username_set": user.is_username_set,
-        "is_email_verified": user.is_email_verified,
-        "is_profile_completed": user.is_profile_completed,
-
-        "github_profile": user.github_profile,
-        "linkedin_profile": user.linkedin_profile,
-        "portfolio_website": user.portfolio_website,
-
-        "created_at": user.created_at,
-        "updated_at": user.updated_at,
-    }
+    serializer = MeSerializer(request.user)
 
     return Response(
         {
-            "user": user_data,
-            "success": True
+            "success": True,
+            "user": serializer.data,
         },
-        status=200
+        status=200,
     )
 
 @api_view(["GET"])
@@ -138,7 +115,7 @@ def update_username_view(request):
     return Response({
         "success": True,
         "message": "Username updated successfully.",
-        "user": PublicProfileSerializer(user).data
+        "user": MeSerializer(user).data
     },status=200)
 
 @api_view(["PATCH"])
