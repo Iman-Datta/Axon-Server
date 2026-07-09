@@ -199,4 +199,25 @@ class PublicProfileSerializer(serializers.ModelSerializer):
             "linkedin_profile",
             "portfolio_website",
         ]
+
+class MeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "avatar",
+            "bio",
+            "github_username",
+            "github_profile",
+            "linkedin_profile",
+            "portfolio_website",
+            "is_email_verified",
+            "is_profile_completed",
+            "google_id",
+            "created_at",
+        ]
         
