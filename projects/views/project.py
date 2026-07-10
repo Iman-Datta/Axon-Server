@@ -8,6 +8,7 @@ from ..decorators import resolve_workspace, resolve_project
 from ..models import Project, ProjectMember
 from organizations.permissions import has_admin_permission, get_org_member
 from ..permissions import is_project_member
+from users.models import Workspace
 
 
 @api_view(["POST"])
@@ -107,7 +108,7 @@ def project_detail_view(request, slug, project_slug):
     workspace = request.workspace
 
     # Personal Workspace
-    if workspace.type == workspace.Type.PERSONAL:
+    if workspace.type == Workspace.Type.PERSONAL:
         if workspace.owner != request.user:
             return Response(
                 {
