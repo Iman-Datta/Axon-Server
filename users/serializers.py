@@ -201,23 +201,34 @@ class PublicProfileSerializer(serializers.ModelSerializer):
         ]
 
 class MeSerializer(serializers.ModelSerializer):
+    is_github_connected = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
             "id",
             "username",
             "email",
+
             "first_name",
             "last_name",
+
             "avatar",
             "bio",
+
+            "is_profile_completed",
+            "is_username_set",
+            "is_email_verified",
+
             "github_username",
             "github_profile",
+            "is_github_connected",
+
             "linkedin_profile",
             "portfolio_website",
-            "is_email_verified",
-            "is_profile_completed",
-            "google_id",
+
             "created_at",
         ]
-        
+
+    def get_is_github_connected(self, obj):
+        return bool(obj.github_id)
