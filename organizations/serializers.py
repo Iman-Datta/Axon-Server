@@ -54,6 +54,37 @@ class OrganizationSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
+class OrganizationDetailSerializer(serializers.ModelSerializer):
+    followers_count = serializers.SerializerMethodField()
+    members_count = serializers.SerializerMethodField()
+    projects_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Organization
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "description",
+            "avatar",
+            "location",
+            "email",
+            "website",
+            "followers_count",
+            "members_count",
+            "projects_count",
+            "created_at",
+        ]
+
+    def get_followers_count(self, obj):
+        return obj.followers.count()
+
+    def get_members_count(self, obj):
+        return obj.members.count()
+
+    def get_projects_count(self, obj):
+        return obj.projects.count()
+
 class OrganizationMemberSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username",read_only=True)
     email = serializers.EmailField(source="user.email",read_only=True)

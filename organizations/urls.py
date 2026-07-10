@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views.organization import (create_org, my_org, update_org,delete_org,)
+from .views.organization import (create_org, my_org, update_org,delete_org,org_detail_view)
 from .views.member import (list_members,add_member,update_member_role,remove_member,leave_org,)
 
 urlpatterns = [
@@ -8,6 +8,7 @@ urlpatterns = [
     path("my/", my_org, name="my-org"),
     path("<slug:slug>/", update_org, name="update-org"),
     path("<slug:slug>/delete/", delete_org, name="delete-org"),
+    path("<slug:slug>/",org_detail_view,name="organization-detail"),
 
     path("<slug:slug>/members/", list_members),
     path("<slug:slug>/members/add/", add_member),

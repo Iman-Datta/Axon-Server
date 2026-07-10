@@ -1,9 +1,11 @@
 from rest_framework.decorators import (api_view, permission_classes)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from ..serializers import OrganizationSerializer
-from ..models import Organization, OrganizationMember
+from ..serializers import OrganizationSerializer, OrganizationDetailSerializer
+from ..models import Organization
 from ..permissions import has_admin_permission, is_org_owner
+from projects.decorators import resolve_workspace
+from users.models import Workspace
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -118,4 +120,34 @@ def delete_org(request, slug):
             "message": "Organization deleted successfully."
         },
         status=200
+    )
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@resolve_workspace
+def org_detail_view(request, slug):
+    workspace = request.workspace
+
+    if workspace.type == Workspace.Type.PERSONAL:
+        return Response(
+            {
+                "success": False,
+                "message": "Organization not found.",
+            },
+            status=404,
+        )
+
+    organization = workspace.organization
+
+    serializer = OrganizationDetailSerializer(
+        organization
+    )
+
+    return Response(
+        {
+            "success": True,
+            "message": "Organization fetched successfully.",
+            "organization": serializer.data,
+        },
+        status=200,
     )
