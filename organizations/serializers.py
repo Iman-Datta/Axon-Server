@@ -66,24 +66,20 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
             "name",
             "slug",
             "description",
-            "avatar",
-            "location",
-            "email",
-            "website",
+            "created_at",
             "followers_count",
             "members_count",
             "projects_count",
-            "created_at",
         ]
 
     def get_followers_count(self, obj):
-        return obj.followers.count()
+        return 0
 
     def get_members_count(self, obj):
         return obj.members.count()
 
     def get_projects_count(self, obj):
-        return obj.projects.count()
+        return obj.workspace.projects.count()
 
 class OrganizationMemberSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username",read_only=True)
