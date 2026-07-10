@@ -19,59 +19,6 @@ def me_view(request):
     )
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
-def onboarding_status_view(request):
-    user = request.user
-
-    username_status = user.is_username_set
-    email_status = bool(user.email) and user.is_email_verified
-    github_status = bool(user.github_id)
-    profile_status = user.is_profile_completed
-
-    identity_status = (
-        username_status
-        and email_status
-        and github_status
-    )
-    return Response(
-        {
-            "success": True,
-
-            "identity": {
-                "status": identity_status,
-
-                "requirements": {
-                    "username": username_status,
-                    "email": email_status,
-                    "github": github_status,
-                },
-                "data": {
-                    "username": user.username if username_status else None,
-
-                    "email": user.email if email_status else None,
-
-                    "github": {
-                        "id": user.github_id,
-                        "username": user.github_username,
-                        "profile": user.github_profile,
-                        "avatar": user.avatar,
-                    } if github_status else None,
-                },
-            },
-
-            "profile": {
-                "status": profile_status,
-
-                "data": {
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
-                } if profile_status else None,
-            },
-        },
-        status=200,
-    )
-
-@api_view(["GET"])
 def check_username_view(request):
     serializer = UsernameSerializer(data=request.GET)
     if not serializer.is_valid():

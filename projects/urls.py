@@ -18,8 +18,8 @@ from .views.member import (
 
 urlpatterns = [
     # Projects
-    path("workspaces/<slug:slug>/", list_projects_view),
-    path("workspaces/<slug:slug>/create/", create_project_view),
+    path("<slug:slug>/", list_projects_view),
+    path("<slug:slug>/create/", create_project_view),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/", project_detail_view),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/update/", project_update_view),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/delete/", delete_project),

@@ -11,9 +11,9 @@ from projects.decorators import resolve_workspace
 def workspace_detail_view(request, slug):
     workspace = request.workspace
 
-    return Response(
-        {
+    return Response({
             "success": True,
-            "type": workspace.type,
-        }
-    )
+            "workspace": {
+                "slug": slug,
+                "type": workspace.type,
+            },},status=200,)
