@@ -5,3 +5,5 @@ from .oauth import *
 from .profile_views import *
 
 from .verification import *
+
+from .workspace_resolver import *
