@@ -82,8 +82,55 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
         return obj.workspace.projects.count()
 
 class OrganizationMemberSerializer(serializers.ModelSerializer):
-    username = serializers.CharField(source="user.username",read_only=True)
-    email = serializers.EmailField(source="user.email",read_only=True)
+    username = serializers.CharField(
+        source="user.username",
+        read_only=True
+    )
+
+    email = serializers.EmailField(
+        source="user.email",
+        read_only=True
+    )
+
+    avatar = serializers.URLField(
+        source="user.avatar",
+        read_only=True
+    )
+
+    bio = serializers.CharField(
+        source="user.bio",
+        read_only=True
+    )
+
+    github_username = serializers.CharField(
+        source="user.github_username",
+        read_only=True
+    )
+
+    github_profile = serializers.URLField(
+        source="user.github_profile",
+        read_only=True
+    )
+
+    linkedin_profile = serializers.URLField(
+        source="user.linkedin_profile",
+        read_only=True
+    )
+
+    portfolio_website = serializers.URLField(
+        source="user.portfolio_website",
+        read_only=True
+    )
+
+    is_email_verified = serializers.BooleanField(
+        source="user.is_email_verified",
+        read_only=True
+    )
+
+    created_at = serializers.DateTimeField(
+        source="user.created_at",
+        read_only=True
+    )
 
     class Meta:
         model = OrganizationMember
@@ -92,8 +139,16 @@ class OrganizationMemberSerializer(serializers.ModelSerializer):
             "id",
             "username",
             "email",
+            "avatar",
+            "bio",
+            "github_username",
+            "github_profile",
+            "linkedin_profile",
+            "portfolio_website",
+            "is_email_verified",
             "role",
             "joined_at",
+            "created_at",
         ]
 
 class AddMemberSerializer(serializers.Serializer):
