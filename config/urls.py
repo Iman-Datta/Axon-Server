@@ -9,7 +9,7 @@ urlpatterns = [
     path('auth/', include ('users.urls')),
     path('org/', include('organizations.urls')),
     path('projects/', include('projects.urls')),
-    path('tickets/workspaces/<slug:slug>/projects/<slug:project_slug>/', include('tickets.urls')),
+    path('tickets/<slug:slug>/<slug:project_slug>/', include('tickets.urls')),
 ]
 
 if settings.DEBUG:
