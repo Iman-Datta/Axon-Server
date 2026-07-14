@@ -6,7 +6,7 @@ from .views.member import (list_members,add_member,update_member_role,remove_mem
 urlpatterns = [
     path("create/", create_org, name="create-org"),
     path("my/", my_org, name="my-org"),
-    path("<slug:slug>/", update_org, name="update-org"),
+    path("<slug:slug>/update", update_org, name="update-org"),
     path("<slug:slug>/delete/", delete_org, name="delete-org"),
     path("<slug:slug>/",org_detail_view,name="organization-detail"),
 

@@ -25,7 +25,7 @@ urlpatterns = [
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/delete/", delete_project),
 
     # Members
-    path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/", list_member),
+    path("<slug:slug>/<slug:project_slug>/members/", list_member),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/add/", add_member),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/role/", update_member_role),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/remove/", remove_member),
