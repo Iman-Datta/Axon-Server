@@ -12,8 +12,9 @@ from ..serializers.ticket import TicketSerializer
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@resolve_workspace
 @resolve_project
-def create_ticket(request, project_slug):
+def create_ticket(request, slug, project_slug):
     if not has_developer_permission(request.user, request.project):
         return Response({"success": False, "message": "Permission denied."}, status=403)
 
@@ -39,8 +40,9 @@ def create_ticket(request, project_slug):
 
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
+@resolve_workspace
 @resolve_project
-def update_ticket(request, project_slug, ticket_id):
+def update_ticket(request, slug, project_slug, ticket_id):
     if not has_developer_permission(request.user, request.project):
         return Response({"success": False, "message": "Permission denied."}, status=403)
 
@@ -91,8 +93,9 @@ def list_tickets(request, slug, project_slug):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+@resolve_workspace
 @resolve_project
-def retrieve_ticket(request, project_slug, ticket_id):
+def retrieve_ticket(request, slug, project_slug, ticket_id):
     if not is_project_member(request.user, request.project):
         return Response({"success": False, "message": "You are not a member of this project."}, status=403)
 
@@ -111,8 +114,9 @@ def retrieve_ticket(request, project_slug, ticket_id):
 
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
+@resolve_workspace
 @resolve_project
-def delete_ticket(request, project_slug, ticket_id):
+def delete_ticket(request, slug, project_slug, ticket_id):
 
     if not has_lead_permission(request.user, request.project):
         return Response({"success": False, "message": "Permission denied."}, status=403)
@@ -131,8 +135,9 @@ def delete_ticket(request, project_slug, ticket_id):
 
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
+@resolve_workspace
 @resolve_project
-def assign_ticket(request, ticket_id):
+def assign_ticket(request, slug, project_slug, ticket_id):
     if not has_lead_permission(request.user, request.project):
         return Response({"success": False, "message": "Permission denied."}, status=403)
 

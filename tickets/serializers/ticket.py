@@ -44,7 +44,14 @@ class EpicMiniSerializer(serializers.ModelSerializer):
 
 
 class TicketSerializer(serializers.ModelSerializer):
-    epic = serializers.SerializerMethodField()
+    epic = EpicMiniSerializer(read_only=True)
+    epic_id = serializers.PrimaryKeyRelatedField(
+        queryset=Epic.objects.all(),
+        source="epic",
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
     creator = serializers.SerializerMethodField()
     assignee = serializers.SerializerMethodField()
 
@@ -64,10 +71,12 @@ class TicketSerializer(serializers.ModelSerializer):
             "estimated_hours",
             "order",
             "epic",
+            "epic_id",
             "creator",
             "assignee",
             "created_at",
             "updated_at",
+            "due_date",
         ]
 
         read_only_fields = [
@@ -77,12 +86,6 @@ class TicketSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
-    def get_epic(self, obj):
-        if not obj.epic:
-            return None
-
-        return EpicMiniSerializer(obj.epic).data
 
     def get_creator(self, obj):
         if not obj.creator:
@@ -116,16 +119,15 @@ class TicketSerializer(serializers.ModelSerializer):
         project = self.context["project"]
         user = self.context["user"]
 
-        ticket_count = (
-            Ticket.objects.filter(
-                project=project,
-            ).count()
-            + 1
-        )
+        last_ticket = (Ticket.objects.filter(project=project,).order_by("-id").first())
+        
+        if last_ticket:
+            last_number = int(last_ticket.ticket_number.split("-")[-1])
+            next_number = last_number + 1
+        else:
+            next_number = 1
 
-        ticket_number = (
-            f"{project.slug.upper()}-{ticket_count}"
-        )
+        ticket_number = (f"{project.slug.upper()}-{next_number}")
 
         return Ticket.objects.create(
             project=project,
@@ -133,7 +135,7 @@ class TicketSerializer(serializers.ModelSerializer):
             ticket_number=ticket_number,
             **validated_data,
         )
-
+    
     def update(self, instance, validated_data):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
