@@ -1,3 +1,5 @@
+from django.db.models import Max
+
 from rest_framework import serializers
 
 from ..models import Ticket, Epic
@@ -32,7 +34,6 @@ class UserMiniSerializer(serializers.ModelSerializer):
 
         return membership.role if membership else None
 
-
 class EpicMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Epic
@@ -41,7 +42,6 @@ class EpicMiniSerializer(serializers.ModelSerializer):
             "name",
             "color",
         ]
-
 
 class TicketSerializer(serializers.ModelSerializer):
     epic = EpicMiniSerializer(read_only=True)
@@ -119,20 +119,35 @@ class TicketSerializer(serializers.ModelSerializer):
         project = self.context["project"]
         user = self.context["user"]
 
-        last_ticket = (Ticket.objects.filter(project=project,).order_by("-id").first())
-        
+        # Generate ticket number
+        last_ticket = (
+            Ticket.objects.filter(project=project)
+            .order_by("-id")
+            .first()
+        )
+
         if last_ticket:
             last_number = int(last_ticket.ticket_number.split("-")[-1])
             next_number = last_number + 1
         else:
             next_number = 1
 
-        ticket_number = (f"{project.slug.upper()}-{next_number}")
+        ticket_number = f"{project.slug.upper()}-{next_number}"
+
+        # Get column (default is TODO)
+        column = validated_data.get("kanban_column",Ticket.KanbanColumn.TODO)
+
+        # Generate order
+        max_order = (
+            Ticket.objects.filter(project=project,kanban_column=column,).aggregate(Max("order"))["order__max"])
+
+        order = 0 if max_order is None else max_order + 1
 
         return Ticket.objects.create(
             project=project,
             creator=user,
             ticket_number=ticket_number,
+            order=order,
             **validated_data,
         )
     

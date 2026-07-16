@@ -37,7 +37,6 @@ def create_ticket(request, slug, project_slug):
         "ticket": TicketSerializer(ticket).data
     }, status=201)
 
-
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace
@@ -72,7 +71,6 @@ def update_ticket(request, slug, project_slug, ticket_id):
         "ticket": serializer.data
     }, status=200)
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace
@@ -89,7 +87,6 @@ def list_tickets(request, slug, project_slug):
         "count": tickets.count(),
         "tickets": serializer.data
     }, status=200)
-
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -110,7 +107,6 @@ def retrieve_ticket(request, slug, project_slug, ticket_id):
         "success": True,
         "ticket": serializer.data
     }, status=200)
-
 
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
