@@ -226,10 +226,10 @@ Full API documentation will be available via Swagger/Redoc at `/api/docs/` once 
 ## Development Roadmap
 
 - [x] Project architecture and database schema design
-- [ ] User authentication system (JWT)
-- [ ] Organization and project management
-- [ ] Role-based access control
-- [ ] Ticket and Kanban system
+- [x] User authentication system (JWT)
+- [x] Organization and project management
+- [x] Role-based access control
+- [x] Ticket and Kanban system
 - [ ] GitHub webhook integration
 - [ ] Activity logging
 - [ ] Invitation system
