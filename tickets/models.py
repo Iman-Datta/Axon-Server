@@ -28,13 +28,13 @@ class Epic(models.Model):
 class Ticket(models.Model):
 
     class Status(models.TextChoices):
+        DRAFT = "DRAFT", "Draft"
         OPEN = "OPEN", "Open"
         BLOCKED = "BLOCKED", "Blocked"
         DONE = "DONE", "Done"
         CANCELLED = "CANCELLED", "Cancelled"
 
     class KanbanColumn(models.TextChoices):
-        BACKLOG = "BACKLOG", "Backlog"
         TODO = "TODO", "To Do"
         IN_PROGRESS = "IN_PROGRESS", "In Progress"
         REVIEW = "REVIEW", "Review"
@@ -71,7 +71,7 @@ class Ticket(models.Model):
     description = models.TextField(blank=True)
     type = models.CharField(max_length=20,choices=Type.choices,default=Type.TASK,db_index=True,)
 
-    status = models.CharField(max_length=20,choices=Status.choices,default=Status.OPEN,db_index=True,)
+    status = models.CharField(max_length=20,choices=Status.choices,default=Status.DRAFT,db_index=True,)
     kanban_column = models.CharField(max_length=20,choices=KanbanColumn.choices,default=KanbanColumn.TODO,db_index=True)
 
     priority = models.CharField(max_length=20,choices=Priority.choices,default=Priority.MEDIUM,db_index=True,)
