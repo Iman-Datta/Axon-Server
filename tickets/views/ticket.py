@@ -80,6 +80,18 @@ def list_tickets(request, slug, project_slug):
         return Response({"success": False, "message": "You are not a member of this project."}, status=403)
 
     tickets = Ticket.objects.filter(project=request.project)
+
+    status_filter = request.query_params.get("status")
+    epic_filter = request.query_params.get("epic")
+    column_filter = request.query_params.get("column")
+
+    if status_filter:
+        tickets = tickets.filter(status=status_filter)
+    if epic_filter:
+        tickets = tickets.filter(epic_id=epic_filter)
+    if column_filter:
+        tickets = tickets.filter(kanban_column = column_filter)
+
     serializer = TicketSerializer(tickets, many=True)
 
     return Response({
