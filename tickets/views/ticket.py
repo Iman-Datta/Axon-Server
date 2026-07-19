@@ -193,7 +193,7 @@ def assign_ticket(request, slug, project_slug, ticket_id):
 @permission_classes([IsAuthenticated])
 @resolve_workspace
 @resolve_project
-def update_kanban_board(request, slug, project_slug):
+def update_board(request, slug, project_slug):
     if not has_developer_permission(request.user, request.project):
         return Response({
                 "success": False,
