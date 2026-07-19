@@ -2,6 +2,8 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from django.db import transaction
+
 from projects.decorators import resolve_project, resolve_workspace
 from projects.permissions import has_developer_permission, has_lead_permission, is_project_member
 from projects.models import ProjectMember
@@ -185,3 +187,59 @@ def assign_ticket(request, slug, project_slug, ticket_id):
         "message": "Ticket assigned successfully.",
         "ticket": TicketSerializer(ticket).data,
     }, status=200)
+
+# TODO
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+@resolve_workspace
+@resolve_project
+def update_kanban_board(request, slug, project_slug):
+    if not has_developer_permission(request.user, request.project):
+        return Response({
+                "success": False,
+                "message": "Permission denied."
+            },status=403)
+
+    tickets = request.data.get("tickets")
+
+    if not isinstance(tickets, list):
+        return Response({
+                "success": False,
+                "message": "Invalid payload. 'tickets' must be a list."
+            },status=400)
+
+    with transaction.atomic():
+        for item in tickets:
+
+            required_fields = ["id", "kanban_column", "order"]
+
+            for field in required_fields:
+                if field not in item:
+                    return Response({
+                            "success": False,
+                            "message": f"'{field}' is required."
+                        },status=400)
+
+            try:
+                ticket = Ticket.objects.get(id=item["id"],project=request.project,)
+            except Ticket.DoesNotExist:
+                return Response(
+                    {
+                        "success": False,
+                        "message": f"Ticket with id {item['id']} not found."
+                    },status=404)
+
+            ticket.kanban_column = item["kanban_column"]
+            ticket.order = item["order"]
+
+            ticket.save(
+                update_fields=[
+                    "kanban_column",
+                    "order",
+                ]
+            )
+
+    return Response({
+            "success": True,
+            "message": "Kanban board updated successfully."
+        },status=200)
