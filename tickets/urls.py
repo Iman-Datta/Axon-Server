@@ -1,7 +1,7 @@
 from django.urls import path
 
 from .views.epic import create_epic, update_epic, list_epics, delete_epic
-from .views.ticket import (create_ticket,update_ticket,list_tickets,retrieve_ticket,delete_ticket,assign_ticket)
+from .views.ticket import (create_ticket,update_ticket,list_tickets,retrieve_ticket,delete_ticket,assign_ticket, update_board)
 
 urlpatterns = [
     # Epic
@@ -17,4 +17,5 @@ urlpatterns = [
     path("<int:ticket_id>/update/", update_ticket, name="update_ticket"),
     path("<int:ticket_id>/delete/", delete_ticket, name="delete_ticket"),
     path("<int:ticket_id>/assign/", assign_ticket, name="assign_ticket"),
+    path("board/",update_board, name="update-board"),
 ]
