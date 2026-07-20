@@ -75,19 +75,26 @@ class ProjectMember(models.Model):
             )
         ]
 
-class GitRepository(models.Model):
+class GitHubIntegration(models.Model):
+    project = models.OneToOneField(Project,on_delete=models.CASCADE,related_name="github_integration")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete = models.SET_NULL, null=True, related_name="github_integrations")
 
-    project = models.OneToOneField(
-        Project,
-        on_delete=models.CASCADE,
-        related_name="git_repository"
-    )
+    repository_id = models.BigIntegerField(unique=True)
+    repository_name = models.CharField(max_length=300)
+    repository_full_name = models.CharField(max_length=300)
 
-    provider = models.CharField(max_length=20,default="github")
-    github_repo_id = models.BigIntegerField(unique=True)
-    repository_owner = models.CharField(max_length=100)
-    repo_name = models.CharField(max_length=100)
-    webhook_secret = models.CharField(max_length=255)
-    installation_id = models.BigIntegerField(null=True,blank=True)
+    default_branch = models.CharField(max_length=100)
+
+    webhook_id = models.BigIntegerField(null=True, blank=True)
+    webhook_secret = models.CharField(max_length=255, null=True, blank=True)
 
     is_active = models.BooleanField(default=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'github_integrations'
+    
+    def __str__(self):
+        return self.repository_full_name
