@@ -3,6 +3,7 @@ from django.db import models
 from django.conf import settings
 from organizations.models import Organization
 from django.core.exceptions import ValidationError
+from django_cryptography.fields import encrypt
 
 class User(AbstractUser):
     username = models.CharField(unique=True, max_length=30, db_index=True)
@@ -21,6 +22,7 @@ class User(AbstractUser):
     github_id = models.CharField(max_length=255, unique=True, null=True, blank=True)
     github_username = models.CharField(max_length=255, blank=True)
     github_profile = models.URLField(blank=True)
+    github_access_token = encrypt(models.TextField(null=True, blank=True))
 
     linkedin_profile = models.URLField(blank=True)
     portfolio_website = models.URLField(blank=True)

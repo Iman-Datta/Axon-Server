@@ -26,7 +26,7 @@ def github_login_view(request):
             {
                 "client_id": settings.GITHUB_CLIENT_ID,
                 "redirect_uri": settings.GITHUB_REDIRECT_URI,
-                "scope": "read:user user:email",
+                "scope": "read:user user:email repo",
             }
         )
     )
@@ -113,6 +113,7 @@ def github_callback_view(request):
             user.github_id = github_id
             user.github_username = github_username
             user.github_profile = github_profile
+            user.github_access_token = github_access_token
             user.oauth_state = None
             user.oauth_state_expire = None
 
@@ -120,8 +121,9 @@ def github_callback_view(request):
                 "github_id",
                 "github_username",
                 "github_profile",
+                "github_access_token",
                 "oauth_state",
-                "oauth_state_expire"
+                "oauth_state_expire",
             ]
 
             if not user.avatar:
@@ -183,9 +185,12 @@ def github_callback_view(request):
                     user.avatar = avatar
                     update_fields.append("avatar")
 
+                user.github_access_token = github_access_token
+                update_fields.append("github_access_token")
+
                 if update_fields:
                     user.save(update_fields=update_fields)
-            
+
             else:
                 temp_username = (f"github_{secrets.token_hex(8)}")
                 user = User.objects.create(
@@ -195,6 +200,7 @@ def github_callback_view(request):
                     github_id=github_id,
                     github_username=github_username,
                     github_profile=github_profile,
+                    github_access_token=github_access_token,
 
                     avatar=avatar,
 
@@ -257,7 +263,7 @@ def github_connect_view(request):
             {
                 "client_id": settings.GITHUB_CLIENT_ID,
                 "redirect_uri": settings.GITHUB_REDIRECT_URI,
-                "scope": "read:user user:email",
+                "scope": "read:user user:email repo",
                 "state": state,
             }
         )
