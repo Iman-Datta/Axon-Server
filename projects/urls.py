@@ -16,6 +16,8 @@ from .views.member import (
     leave_project,
 )
 
+from .views.github import (github_repo_view)
+
 urlpatterns = [
     # Projects
     path("<slug:slug>/", list_projects_view),
@@ -30,4 +32,7 @@ urlpatterns = [
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/role/", update_member_role),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/remove/", remove_member),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/leave/", leave_project),
+
+    # Github
+    path("github/repositories/",github_repo_view,name="github-repositories"),
 ]
