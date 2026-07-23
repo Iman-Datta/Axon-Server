@@ -24,6 +24,8 @@ GITHUB_REDIRECT_URI = os.getenv("GITHUB_REDIRECT_URI")
 RESEND_API_KEY = os.getenv("RESEND_API_KEY")
 RESEND_SENDER_EMAIL = os.getenv("RESEND_SENDER_EMAIL")
 
+GITHUB_WEBHOOK_URL = os.getenv("GITHUB_WEBHOOK_URL")
+
 DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -96,23 +98,23 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 # Development server
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
-        'PORT': os.getenv('DB_PORT'),
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': os.getenv('DB_NAME'),
+#         'USER': os.getenv('DB_USER'),
+#         'PASSWORD': os.getenv('DB_PASSWORD'),
+#         'HOST': os.getenv('DB_HOST'),
+#         'PORT': os.getenv('DB_PORT'),
+#     }
+# }
 
 # Production Server
-# DATABASES = {
-#     "default": dj_database_url.parse(
-#         os.getenv("DATABASE_URL")
-#     )
-# }
+DATABASES = {
+    "default": dj_database_url.parse(
+        os.getenv("DATABASE_URL")
+    )
+}
 
 
 AUTH_PASSWORD_VALIDATORS = [

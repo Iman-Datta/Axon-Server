@@ -175,4 +175,3 @@ def disconnect_github_view(request, slug, project_slug):
         "success": True,
         "message": "GitHub repository disconnected successfully.",
     },status=200)
-
