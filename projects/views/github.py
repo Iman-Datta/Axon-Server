@@ -154,3 +154,25 @@ def github_connect_view(request, slug, project_slug):
         },
         status=200,
     )
+
+@api_view(["DELETE"])
+@permission_classes([IsAuthenticated])
+@resolve_workspace
+@resolve_project
+@github_connected
+def disconnect_github_view(request, slug, project_slug):
+    try:
+        integration = GitHubIntegration.objects.get(project = request.project)
+    except GitHubIntegration.DoesNotExist:
+        return Response({
+             "success": False,
+            "message": "No GitHub repository is connected to this project.",
+        },status=404)
+
+    integration.delete()
+
+    return Response({
+        "success": True,
+        "message": "GitHub repository disconnected successfully.",
+    },status=200)
+
