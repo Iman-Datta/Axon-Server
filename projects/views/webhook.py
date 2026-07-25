@@ -33,29 +33,50 @@ def create_github_webhook_view(request, slug, project_slug):
 
     webhook_secret = secrets.token_hex(32)
 
-    integration.webhook_secret = webhook_secret
-    integration.save(update_fields=["webhook_secret"])
-
     owner, repo = integration.repository_full_name.split("/")
 
-    response = requests.post(f"https://api.github.com/repos/{owner}/{repo}/hooks",
-    headers={
-        "Authorization": f"Bearer {request.user.github_access_token}",
-        "Accept": "application/vnd.github+json",
-    },
-    json={
-        "name": "web",
-        "active": True,
-        "events" : [
-            "push",
-            "pull_request",
-        ],
-        "config" : {
-            "url": settings.GITHUB_WEBHOOK_URL,
-            "content_type": "json",
-            "secret": webhook_secret,
-            "insecure_ssl": "0",
-        }
-    },
-    timeout=10,
-)
+    try:
+        response = requests.post(f"https://api.github.com/repos/{owner}/{repo}/hooks",
+            headers={
+                    "Authorization": f"Bearer {request.user.github_access_token}",
+                    "Accept": "application/vnd.github+json",
+                },
+            json={
+                "name": "web",
+                "active": True,
+                "events" : [
+                    "push",
+                    "pull_request",
+                ],
+                "config" : {
+                    "url": settings.GITHUB_WEBHOOK_URL,
+                    "content_type": "json",
+                    "secret": webhook_secret,
+                    "insecure_ssl": "0",
+                }
+            },
+            timeout=10,
+        )
+    except requests.RequestException:
+        return Response({
+                "success": False,
+                "message": "Unable to connect to GitHub.",
+            },status=503)
+    
+    if response.status_code != 201:
+        return Response({
+                "success": False,
+                "message": response.json().get("message", "Failed to create webhook."),
+            },status=response.status_code)
+
+    data = response.json()
+
+    integration.webhook_secret = webhook_secret
+    integration.webhook_id = data["id"]
+    integration.save(update_fields=["webhook_id", "webhook_secret"])
+    
+    return Response({
+        "success": True,
+        "message": "Webhook created successfully.",
+        "webhook_id": integration.webhook_id,
+    })
