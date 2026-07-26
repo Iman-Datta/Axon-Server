@@ -1,5 +1,7 @@
 import requests
 import secrets
+import hashlib
+import hmac
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +12,8 @@ from users.decorators import github_connected
 from ..decorators import resolve_project, resolve_workspace
 from ..models import GitHubIntegration
 from ..serializers.github import GitHubIntegrationSerializer, GitHubConnectSerializer
+
+from tickets.services import handle_pull_request_closed,handle_pull_request_opened,handle_push_event,handle_create_event
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -47,6 +51,7 @@ def create_github_webhook_view(request, slug, project_slug):
                 "events" : [
                     "push",
                     "pull_request",
+                    "create",
                 ],
                 "config" : {
                     "url": settings.GITHUB_WEBHOOK_URL,
@@ -80,3 +85,68 @@ def create_github_webhook_view(request, slug, project_slug):
         "message": "Webhook created successfully.",
         "webhook_id": integration.webhook_id,
     })
+
+@api_view(["POST"])
+def github_webhook_view(request):
+    signature = request.headers.get("X-Hub-Signature-256")
+    if not signature:
+        return Response({
+                "success": False,
+                "message": "Missing GitHub signature.",
+            },status=401)
+
+    payload = request.data
+    event = request.headers.get("X-GitHub-Event")
+    if not event:
+        return Response({
+                "success": False,
+                "message": "Missing GitHub event.",
+            },status=400)
+
+    repository = payload.get("repository", {})
+    repository_full_name = repository.get("full_name")
+
+    if not repository_full_name:
+        return Response({
+            "success": False,
+            "message": "Repository information missing.",
+        },status=400)
+
+    try:
+        integration = GitHubIntegration.objects.select_related("project").get(repository_full_name=repository_full_name) 
+    except GitHubIntegration.DoesNotExist:
+        return Response({
+            "success": False,
+            "message": "Repository is not connected to Axon.",
+        },status=404)
+
+    if not integration.webhook_secret:
+        return Response({
+            "success": False,
+            "message": "Webhook secret not configured.",
+        },status=500)
+    
+    expected_signature = (
+        "sha256=" +
+        hmac.new(
+            key=integration.webhook_secret.encode(),
+            msg=request.body,
+            digestmod=hashlib.sha256,
+        ).hexdigest()
+    )
+    if not hmac.compare_digest(signature, expected_signature):
+        return Response({
+                "success": False,
+                "message": "Invalid GitHub signature.",
+            },status=403)
+    if event == "create":
+        handle_create_event(integration, payload)
+    elif event == "push":
+        handle_push_event(integration,payload)
+    elif event == "pull_request":
+        action = payload.get("action")
+        if action == "opened":
+            handle_pull_request_opened(integration, payload)
+        elif action == "closed":
+            handle_pull_request_closed(integration, payload)
+    return Response({"success": True},status=200)
