@@ -1,22 +1,12 @@
 from django.urls import path
 
-from .views.project import (
-    create_project_view,
-    list_projects_view,
-    project_detail_view,
-    project_update_view,
-    delete_project,
-)
+from .views.project import (create_project_view,list_projects_view,project_detail_view,project_update_view,delete_project)
 
-from .views.member import (
-    add_member,
-    list_member,
-    update_member_role,
-    remove_member,
-    leave_project,
-)
+from .views.member import (add_member,list_member,update_member_role,remove_member,leave_project)
 
-from .views.github import (github_repo_view)
+from .views.github import (github_repo_view, github_connect_view, disconnect_github_view)
+
+from .views.webhook import (github_webhook_view, create_github_webhook_view)
 
 urlpatterns = [
     # Projects
@@ -34,5 +24,9 @@ urlpatterns = [
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/leave/", leave_project),
 
     # Github
-    path("github/repositories/",github_repo_view,name="github-repositories"),
+    path("github/repositories/", github_repo_view, name="github-repositories"),
+    path("github/connect/", github_connect_view, name="github-connect"),
+    path("github/disconnect/", disconnect_github_view, name="github-disconnect"),
+    path("github/create-webhook/", create_github_webhook_view, name="github-create-webhook"),
+    path("github/webhook/", github_webhook_view, name="github-webhook"),
 ]
