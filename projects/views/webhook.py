@@ -95,13 +95,16 @@ def github_webhook_view(request):
                 "message": "Missing GitHub signature.",
             },status=401)
 
-    payload = request.data
     event = request.headers.get("X-GitHub-Event")
     if not event:
         return Response({
                 "success": False,
                 "message": "Missing GitHub event.",
             },status=400)
+    
+    raw_body = request.body
+
+    payload = request.data
 
     repository = payload.get("repository", {})
     repository_full_name = repository.get("full_name")
@@ -125,12 +128,12 @@ def github_webhook_view(request):
             "success": False,
             "message": "Webhook secret not configured.",
         },status=500)
-    
+
     expected_signature = (
         "sha256=" +
         hmac.new(
             key=integration.webhook_secret.encode(),
-            msg=request.body,
+            msg=raw_body,
             digestmod=hashlib.sha256,
         ).hexdigest()
     )
@@ -139,6 +142,13 @@ def github_webhook_view(request):
                 "success": False,
                 "message": "Invalid GitHub signature.",
             },status=403)
+
+    if event == "ping":
+        return Response({
+                "success": True,
+                "message": "GitHub webhook verified."
+            },status=200)
+    
     if event == "create":
         handle_create_event(integration, payload)
     elif event == "push":
