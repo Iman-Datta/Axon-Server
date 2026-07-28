@@ -25,8 +25,8 @@ urlpatterns = [
 
     # Github
     path("github/repositories/", github_repo_view, name="github-repositories"),
-    path("github/connect/", github_connect_view, name="github-connect"),
-    path("github/disconnect/", disconnect_github_view, name="github-disconnect"),
-    path("github/create-webhook/", create_github_webhook_view, name="github-create-webhook"),
+    path("<slug:slug>/<slug:project_slug>/github/connect/", github_connect_view, name="github-connect"),
+    path("<slug:slug>/<slug:project_slug>/github/disconnect/", disconnect_github_view, name="github-disconnect"),
+    path("<slug:slug>/<slug:project_slug>/github/create-webhook/", create_github_webhook_view, name="github-create-webhook"),
     path("github/webhook/", github_webhook_view, name="github-webhook"),
 ]
