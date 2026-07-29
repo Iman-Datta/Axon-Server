@@ -4,7 +4,7 @@ from .views.project import (create_project_view,list_projects_view,project_detai
 
 from .views.member import (add_member,list_member,update_member_role,remove_member,leave_project)
 
-from .views.github import (github_repo_view, github_connect_view, disconnect_github_view)
+from .views.github import (github_repo_view, github_connect_view, disconnect_github_view, github_integration_status_view)
 
 from .views.webhook import (github_webhook_view, create_github_webhook_view)
 
@@ -29,4 +29,5 @@ urlpatterns = [
     path("<slug:slug>/<slug:project_slug>/github/disconnect/", disconnect_github_view, name="github-disconnect"),
     path("<slug:slug>/<slug:project_slug>/github/create-webhook/", create_github_webhook_view, name="github-create-webhook"),
     path("github/webhook/", github_webhook_view, name="github-webhook"),
+    path("<slug:slug>/<slug:project_slug>/github/status/",github_integration_status_view,name="github-status"),
 ]

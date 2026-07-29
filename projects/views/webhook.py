@@ -11,7 +11,6 @@ from django.conf import settings
 from users.decorators import github_connected
 from ..decorators import resolve_project, resolve_workspace
 from ..models import GitHubIntegration
-from ..serializers.github import GitHubIntegrationSerializer, GitHubConnectSerializer
 
 from tickets.services import handle_pull_request_closed,handle_pull_request_opened,handle_push_event,handle_create_event
 
