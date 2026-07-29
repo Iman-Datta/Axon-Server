@@ -216,6 +216,7 @@ def github_integration_status_view(request, slug, project_slug):
     return Response({
         "success": True,
         "github_connected": github_connected,
+        "github_token_expired": github_token_expired,
         "repository_connected": True,
         "webhook_connected": bool(integration.webhook_id),
         "integration": {
