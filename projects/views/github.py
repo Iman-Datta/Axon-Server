@@ -155,8 +155,6 @@ def github_connect_view(request, slug, project_slug):
         status=200,
     )
 
-import requests
-
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace
