@@ -39,7 +39,7 @@ def github_repo_view(request):
         return Response({
                 "success": False,
                 "message": "GitHub access token is invalid or expired. Please reconnect your GitHub account.",
-            },status=401,)
+            },status=400,)
 
     if response.status_code == 403:
         return Response({
@@ -181,26 +181,47 @@ def disconnect_github_view(request, slug, project_slug):
 @resolve_workspace
 @resolve_project
 def github_integration_status_view(request, slug, project_slug):
-    github_connected = bool(request.user.github_access_token)
-    try:
-        integration = GitHubIntegration.objects(project = request.project)
+    github_connected = False
+    github_token_expired = False
+
+    if request.user.github_access_token:
+        try:
+            response = requests.get(
+                "https://api.github.com/user",
+                headers={
+                    "Authorization": f"Bearer {request.user.github_access_token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                timeout=5,
+            )
+
+            if response.status_code == 200:
+                github_connected = True
+            elif response.status_code == 401:
+                github_token_expired = True
+
+        except requests.RequestException:
+            pass
+    integration = GitHubIntegration.objects.filter(project = request.project).first()
+    if integration is None:
         return Response({
             "success": True,
             "github_connected": github_connected,
-            "repository_connected": True,
-            "webhook_connected": bool(integration.webhook_id),
-            "integration": {
-                "repository_name": integration.repository_name,
-                "repository_full_name": integration.repository_full_name,
-                "default_branch": integration.default_branch,
-                "webhook_id": integration.webhook_id,
-            }
-        },status=200)
-    except GitHubIntegration.DoesNotExist:
-        return Response({
-            "success": True,
-            "github_connected": github_connected,
+            "github_token_expired" : github_token_expired,
             "repository_connected": False,
             "webhook_connected": False,
             "integration": None,
-        },status=200)
+        }, status=200)
+
+    return Response({
+        "success": True,
+        "github_connected": github_connected,
+        "repository_connected": True,
+        "webhook_connected": bool(integration.webhook_id),
+        "integration": {
+            "repository_name": integration.repository_name,
+            "repository_full_name": integration.repository_full_name,
+            "default_branch": integration.default_branch,
+            "webhook_id": integration.webhook_id,
+        }
+    }, status=200)
