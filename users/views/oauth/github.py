@@ -241,9 +241,6 @@ def github_callback_view(request):
 def github_connect_view(request):
     user = request.user
 
-    if user.github_id:
-        return redirect(f"{settings.FRONTEND_URL}/callback")
-    
     state = secrets.token_urlsafe(32)
 
     user.oauth_state  = hashlib.sha256(state.encode()).hexdigest()
@@ -269,10 +266,7 @@ def github_connect_view(request):
         )
     )
 
-    return Response(
-    {
+    return Response({
         "success": True,
-        "url": github_url
-    },
-    status=200
-)
+        "url": github_url,
+    },status=200)
