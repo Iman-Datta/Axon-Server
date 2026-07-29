@@ -175,3 +175,32 @@ def disconnect_github_view(request, slug, project_slug):
         "success": True,
         "message": "GitHub repository disconnected successfully.",
     },status=200)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@resolve_workspace
+@resolve_project
+def github_integration_status_view(request, slug, project_slug):
+    github_connected = bool(request.user.github_access_token)
+    try:
+        integration = GitHubIntegration.objects(project = request.project)
+        return Response({
+            "success": True,
+            "github_connected": github_connected,
+            "repository_connected": True,
+            "webhook_connected": bool(integration.webhook_id),
+            "integration": {
+                "repository_name": integration.repository_name,
+                "repository_full_name": integration.repository_full_name,
+                "default_branch": integration.default_branch,
+                "webhook_id": integration.webhook_id,
+            }
+        },status=200)
+    except GitHubIntegration.DoesNotExist:
+        return Response({
+            "success": True,
+            "github_connected": github_connected,
+            "repository_connected": False,
+            "webhook_connected": False,
+            "integration": None,
+        },status=200)
