@@ -136,9 +136,7 @@ def github_webhook_view(request):
             digestmod=hashlib.sha256,
         ).hexdigest()
     )
-    print("Received:", signature)
-    print("Expected:", expected_signature)
-    print("Secret:", integration.webhook_secret)
+
     if not hmac.compare_digest(signature, expected_signature):
         return Response({
                 "success": False,
