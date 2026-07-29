@@ -155,6 +155,8 @@ def github_connect_view(request, slug, project_slug):
         status=200,
     )
 
+import requests
+
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace
@@ -162,19 +164,49 @@ def github_connect_view(request, slug, project_slug):
 @github_connected
 def disconnect_github_view(request, slug, project_slug):
     try:
-        integration = GitHubIntegration.objects.get(project = request.project)
+        integration = GitHubIntegration.objects.get(project=request.project)
     except GitHubIntegration.DoesNotExist:
         return Response({
-             "success": False,
+            "success": False,
             "message": "No GitHub repository is connected to this project.",
-        },status=404)
+        }, status=404)
+
+    owner, repo = integration.repository_full_name.split("/")
+
+    # Delete webhook from GitHub
+    if integration.webhook_id:
+        try:
+            response = requests.delete(
+                f"https://api.github.com/repos/{owner}/{repo}/hooks/{integration.webhook_id}",
+                headers={
+                    "Authorization": f"Bearer {request.user.github_access_token}",
+                    "Accept": "application/vnd.github+json",
+                },
+                timeout=10,
+            )
+
+            # Ignore if the webhook is already gone
+            if response.status_code not in (204, 404):
+                return Response({
+                    "success": False,
+                    "message": response.json().get(
+                        "message",
+                        "Failed to delete GitHub webhook.",
+                    ),
+                }, status=response.status_code)
+
+        except requests.RequestException:
+            return Response({
+                "success": False,
+                "message": "Unable to connect to GitHub.",
+            }, status=503)
 
     integration.delete()
 
     return Response({
         "success": True,
         "message": "GitHub repository disconnected successfully.",
-    },status=200)
+    }, status=200)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
