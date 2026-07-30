@@ -1,10 +1,11 @@
+from django.db.models import Count, Q
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from projects.permissions import has_lead_permission, is_project_member, is_project_owner
 from projects.decorators import resolve_project,resolve_workspace
-from ..serializers.epic import EpicSerializer
-from ..models import Epic
+from ..serializers.epic import EpicSerializer, EpicDetailsSerializer
+from ..models import Epic, Ticket
 
 
 @api_view(["POST"])
@@ -80,7 +81,6 @@ def update_epic(request, slug, project_slug, epic_id):
             "epic": serializer.data,
         },status=200,)
 
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace
@@ -92,7 +92,17 @@ def list_epics(request, slug, project_slug):
                 "message": "You are not a member of this project."
             },status=403)
     
-    epics = Epic.objects.filter(project=request.project).order_by("name")
+    epics = (
+        Epic.objects.filter(project=request.project)
+        .annotate(
+            ticket_count=Count("tickets"),
+            completed_count =Count(
+                "tickets",
+                filter=Q(tickets__kanban_column=Ticket.KanbanColumn.DONE),
+            ),
+        )
+    )
+    
 
     serializer = EpicSerializer(epics,many=True,)
     return Response({
@@ -109,9 +119,9 @@ def delete_epic(request, slug, project_slug, epic_id):
 
     if not is_project_owner(request.user, request.project):
         return Response({
-                "success": False,
-                "message": "Only the project owner can delete an epic."
-            },status=403,)
+            "success": False,
+            "message": "Only the project owner can delete an epic."
+        },status=403,)
     
     try:
         epic = Epic.objects.get(id=epic_id,project=request.project,)
@@ -126,3 +136,61 @@ def delete_epic(request, slug, project_slug, epic_id):
             "success": True,
             "message": "Epic deleted successfully."
         },status=200)
+
+from django.db.models import Count, Q
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@resolve_workspace
+@resolve_project
+def epic_details_view(request, slug, project_slug, epic_id):
+    if not is_project_member(request.user, request.project):
+        return Response(
+            {
+                "success": False,
+                "message": "You do not have permission to view this epic.",
+            },
+            status=403,
+        )
+
+    try:
+        epic = (
+            Epic.objects.filter(
+                id=epic_id,
+                project=request.project,
+            )
+            .annotate(
+                ticket_count=Count("tickets"),
+                completed_count=Count(
+                    "tickets",
+                    filter=Q(
+                        tickets__kanban_column=Ticket.KanbanColumn.DONE
+                    ),
+                ),
+            )
+            .prefetch_related(
+                "tickets__assignee",
+            )
+            .get()
+        )
+
+    except Epic.DoesNotExist:
+        return Response(
+            {
+                "success": False,
+                "message": "Epic not found.",
+            },
+            status=404,
+        )
+
+    serializer = EpicDetailsSerializer(
+        epic,
+        context={"project": request.project},
+    )
+
+    return Response(
+        {
+            "success": True,
+            "epic": serializer.data,
+        }
+    )
