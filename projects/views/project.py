@@ -55,49 +55,36 @@ def create_project_view(request, slug):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace
-def list_projects_view(request, slug):
+def my_projects_view(request, slug):
     workspace = request.workspace
-
     # Personal Workspace
     if workspace.type == workspace.Type.PERSONAL:
-        if workspace.owner != request.user:
-            return Response(
-                {
-                    "success": False,
-                    "message": "Permission denied.",
-                },
-                status=403,
-            )
+        projects = Project.objects.filter(
+            workspace__type=Workspace.Type.PERSONAL,
+            members__user=request.user,
+            is_archived=False,
+        ).select_related("workspace", "created_by").distinct()
+        serializer = ProjectListSerializer(projects, many=True)
+        return Response({
+            "success": True,
+            "projects": serializer.data,
+        })
 
-    # Organization Workspace
     else:
         if not get_org_member(request.user, workspace.organization):
-            return Response(
-                {
-                    "success": False,
-                    "message": "User is not a member of this organization.",
-                },
-                status=403,
-            )
+            return Response({
+                "success": False,
+                "message": "User is not a member of this organization.",
+            },status=403,)
+        
+        projects = (Project.objects.filter(workspace=workspace,is_archived=False,).select_related("created_by"))
+        serializer = ProjectListSerializer(projects, many=True)
 
-    projects = (
-        Project.objects.filter(
-            workspace=workspace,
-            is_archived=False,
-        )
-        .select_related("created_by")
-    )
-
-    serializer = ProjectListSerializer(projects, many=True)
-
-    return Response(
-        {
+        return Response({
             "success": True,
             "message": "Projects fetched successfully.",
             "projects": serializer.data,
-        },
-        status=200,
-    )
+        },status=200,)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])

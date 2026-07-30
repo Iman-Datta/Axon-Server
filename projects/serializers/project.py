@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from projects.models import Project
+from users.models import Workspace
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -13,6 +14,9 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
         ]
 
 class ProjectListSerializer(serializers.ModelSerializer):
+    workspace_slug = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
+    workspace_type = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -23,9 +27,27 @@ class ProjectListSerializer(serializers.ModelSerializer):
             "description",
             "visibility",
             "website",
+            "workspace_slug",
+            "workspace_name",
+            "workspace_type",
             "created_at",
             "updated_at",
         ]
+
+    def get_workspace_slug(self, obj):
+        if obj.workspace.type == Workspace.Type.PERSONAL:
+            return obj.workspace.owner.username
+
+        return obj.workspace.organization.slug
+
+    def get_workspace_name(self, obj):
+        if obj.workspace.type == Workspace.Type.PERSONAL:
+            return obj.workspace.owner.get_full_name() or obj.workspace.owner.username
+
+        return obj.workspace.organization.name
+
+    def get_workspace_type(self, obj):
+        return obj.workspace.type
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
     created_by = serializers.CharField(source="created_by.username",read_only=True)
