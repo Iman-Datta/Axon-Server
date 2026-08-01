@@ -81,7 +81,7 @@ def list_tickets(request, slug, project_slug):
     if not is_project_member(request.user, request.project):
         return Response({"success": False, "message": "You are not a member of this project."}, status=403)
 
-    tickets = Ticket.objects.filter(project=request.project)
+    tickets = Ticket.objects.filter(project=request.project).order_by("-created_at")
 
     status_filter = request.query_params.get("status")
     epic_filter = request.query_params.get("epic")
