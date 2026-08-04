@@ -7,8 +7,8 @@ urlpatterns = [
     # Epic
     path("epics/", list_epics, name="list_epics"),
     path("epics/create/", create_epic, name="create_epic"),
-    path("epics/<int:epic_id>/update/", update_epic, name="update_epic"),
-    path("epics/<int:epic_id>/delete/", delete_epic, name="delete_epic"),
+    path("epic/<int:epic_id>/update/", update_epic, name="update_epic"),
+    path("epic/<int:epic_id>/delete/", delete_epic, name="delete_epic"),
     path("epic/<int:epic_id>", epic_details_view, name="epic_details"),
 
     # Ticket

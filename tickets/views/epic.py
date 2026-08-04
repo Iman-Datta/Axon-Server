@@ -8,34 +8,61 @@ from ..serializers.epic import EpicSerializer, EpicDetailsSerializer
 from ..models import Epic, Ticket
 
 
+from django.db.models import Count, Q
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace
 @resolve_project
-def create_epic(request, slug, project_slug):    
+def create_epic(request, slug, project_slug):
     if not has_lead_permission(request.user, request.project):
         return Response({
             "success": False,
-            "message": "Permission denied."
-            },status=403)
+            "message": "Permission denied.",
+        },status=403)
 
     serializer = EpicSerializer(
-        data = request.data,
-         context={
-        "project": request.project,
-        "user": request.user,
-        }
+        data=request.data,
+        context={
+            "project": request.project,
+            "user": request.user,
+        },
     )
 
     serializer.is_valid(raise_exception=True)
     epic = serializer.save()
-    serializer = EpicSerializer(epic) 
+
+    # Fetch the created epic with annotations
+    epic = (
+        Epic.objects.filter(
+            id=epic.id,
+            project=request.project,
+        )
+        .annotate(
+            ticket_count=Count("tickets"),
+            completed_count=Count(
+                "tickets",
+                filter=Q(
+                    tickets__kanban_column=Ticket.KanbanColumn.DONE,
+                ),
+            ),
+        )
+        .first()
+    )
+
+    response_serializer = EpicSerializer(
+        epic,
+        context={
+            "project": request.project,
+            "user": request.user,
+        },
+    )
 
     return Response({
         "success": True,
         "message": "Epic created successfully.",
-        "epic": serializer.data
-    }, status=201)
+        "epic": response_serializer.data,
+    },status=201)
     
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
@@ -44,23 +71,22 @@ def create_epic(request, slug, project_slug):
 def update_epic(request, slug, project_slug, epic_id):
     if not has_lead_permission(request.user, request.project):
         return Response({
-                "success": False,
-                "message": "Permission denied."
-            },status=403,)
-    
+            "success": False,
+            "message": "Permission denied.",
+        },status=403)
+
     try:
         epic = Epic.objects.get(id=epic_id,project=request.project,)
     except Epic.DoesNotExist:
         return Response({
-                "success": False,
-                "message": "Epic not found."
-            },status=404,)
+            "success": False,
+            "message": "Epic not found.",
+        },status=404)
 
     serializer = EpicSerializer(
         epic,
         data=request.data,
         partial=True,
-
         context={
             "project": request.project,
             "user": request.user,
@@ -69,17 +95,43 @@ def update_epic(request, slug, project_slug, epic_id):
 
     if not serializer.is_valid():
         return Response({
-                "success": False,
-                "errors": serializer.errors,
-            }, status=400,)
+            "success": False,
+            "errors": serializer.errors,
+        },status=400)
 
     serializer.save()
 
+    # Fetch again with annotations
+    epic = (
+        Epic.objects.filter(
+            id=epic_id,
+            project=request.project,
+        )
+        .annotate(
+            ticket_count=Count("tickets"),
+            completed_count=Count(
+                "tickets",
+                filter=Q(
+                    tickets__kanban_column=Ticket.KanbanColumn.DONE,
+                ),
+            ),
+        )
+        .first()
+    )
+
+    response_serializer = EpicSerializer(
+        epic,
+        context={
+            "project": request.project,
+            "user": request.user,
+        },
+    )
+
     return Response({
-            "success": True,
-            "message": "Epic updated successfully.",
-            "epic": serializer.data,
-        },status=200,)
+        "success": True,
+        "message": "Epic updated successfully.",
+        "epic": response_serializer.data,
+    },status=200)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -136,8 +188,6 @@ def delete_epic(request, slug, project_slug, epic_id):
             "success": True,
             "message": "Epic deleted successfully."
         },status=200)
-
-from django.db.models import Count, Q
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
