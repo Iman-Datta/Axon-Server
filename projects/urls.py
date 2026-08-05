@@ -12,7 +12,7 @@ urlpatterns = [
     # Projects
     path("<slug:slug>/my/",my_projects_view,name="workspace-projects"),
     path("<slug:slug>/create/", create_project_view),
-    path("workspaces/<slug:slug>/projects/<slug:project_slug>/", project_detail_view),
+    path("<slug:slug>/<slug:project_slug>/", project_detail_view),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/update/", project_update_view),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/delete/", delete_project),
 
