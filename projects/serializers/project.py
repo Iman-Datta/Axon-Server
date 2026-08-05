@@ -1,7 +1,19 @@
 from rest_framework import serializers
 
 from projects.models import Project
-from users.models import Workspace
+from users.models import Workspace, User
+
+class ProjectUserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "id",
+            "username",
+            "avatar",
+            "first_name",
+            "last_name",
+            "github_username",
+        ]
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
     class Meta:
@@ -50,7 +62,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
         return obj.workspace.type
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
-    created_by = serializers.CharField(source="created_by.username",read_only=True)
+    created_by = ProjectUserSerializer(read_only=True)
     workspace_type = serializers.CharField(source="workspace.type",read_only=True)
 
     class Meta:

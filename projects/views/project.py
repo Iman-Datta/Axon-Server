@@ -58,7 +58,7 @@ def create_project_view(request, slug):
 def my_projects_view(request, slug):
     workspace = request.workspace
     # Personal Workspace
-    if workspace.type == workspace.Type.PERSONAL:
+    if workspace.type == Workspace.Type.PERSONAL:
         projects = Project.objects.filter(
             workspace__type=Workspace.Type.PERSONAL,
             members__user=request.user,
@@ -91,40 +91,19 @@ def my_projects_view(request, slug):
 @resolve_workspace
 @resolve_project
 def project_detail_view(request, slug, project_slug):
-
     workspace = request.workspace
-
-    # Personal Workspace
-    if workspace.type == Workspace.Type.PERSONAL:
-        if workspace.owner != request.user:
-            return Response(
-                {
-                    "success": False,
-                    "message": "Permission denied.",
-                },
-                status=403,
-            )
-
-    # Organization Workspace
-    else:
+    if workspace.type == Workspace.Type.ORGANIZATION:
         if not get_org_member(request.user, workspace.organization):
-            return Response(
-                {
-                    "success": False,
-                    "message": "User is not a member of this organization.",
-                },
-                status=403,
-            )
+            return Response({
+                "success": False,
+                "message": "User is not a member of this organization.",
+            },status=403)
 
-    # Project Permission
     if not is_project_member(request.user, request.project):
-        return Response(
-            {
+        return Response({
                 "success": False,
                 "message": "User is not a member of this project.",
-            },
-            status=403,
-        )
+            },status=403)
 
     serializer = ProjectDetailSerializer(request.project)
 
