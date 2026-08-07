@@ -13,7 +13,7 @@ urlpatterns = [
     path("<slug:slug>/my/",my_projects_view,name="workspace-projects"),
     path("<slug:slug>/create/", create_project_view),
     path("<slug:slug>/<slug:project_slug>/", project_detail_view),
-    path("workspaces/<slug:slug>/projects/<slug:project_slug>/update/", project_update_view),
+    path("<slug:slug>/<slug:project_slug>/update/", project_update_view),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/delete/", delete_project),
 
     # Members
@@ -21,7 +21,7 @@ urlpatterns = [
     path("<slug:slug>/<slug:project_slug>/member/add/", add_member),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/role/", update_member_role),
     path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/remove/", remove_member),
-    path("workspaces/<slug:slug>/projects/<slug:project_slug>/leave/", leave_project),
+    path("<slug:slug>/<slug:project_slug>/leave/", leave_project),
 
     # Github
     path("github/repositories/", github_repo_view, name="github-repositories"),
