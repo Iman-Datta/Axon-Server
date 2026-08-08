@@ -202,6 +202,7 @@ class PublicProfileSerializer(serializers.ModelSerializer):
 
 class MeSerializer(serializers.ModelSerializer):
     is_github_connected = serializers.SerializerMethodField()
+    is_password = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -209,6 +210,7 @@ class MeSerializer(serializers.ModelSerializer):
             "id",
             "username",
             "email",
+            "is_password",
 
             "first_name",
             "last_name",
@@ -233,6 +235,8 @@ class MeSerializer(serializers.ModelSerializer):
 
     def get_is_github_connected(self, obj):
         return bool(obj.github_id)
+    def get_is_password(self, obj):
+        return bool(obj.password)
 
 class UpdateProfileSerializer(serializers.ModelSerializer):
     class Meta:
