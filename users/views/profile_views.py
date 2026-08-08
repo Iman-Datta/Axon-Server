@@ -1,6 +1,8 @@
 from rest_framework.decorators import (api_view, permission_classes)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 from ..models import User
 from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer,PublicProfileSerializer, MeSerializer, UpdateProfileSerializer
@@ -160,3 +162,33 @@ def update_profile_view(request):
             "user": UpdateProfileSerializer(user).data,
         },status=200
     )
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def update_profile_password_view(request):
+    user = request.user
+
+    new_password = request.data.get("new_password")
+
+    if not new_password:
+        return Response({
+            "success": False,
+            "message": "New password is required.",
+        },status=400)
+            
+    try:
+        validate_password(new_password, user)
+    except ValidationError as error:
+        return Response({
+            "success": False,
+            "message": error.messages,
+        },status=400)
+        
+
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+
+    return Response({
+        "success": True,
+        "message": "Password updated successfully.",
+    },status=200)
