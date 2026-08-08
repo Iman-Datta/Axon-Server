@@ -80,29 +80,3 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
         ]
-
-class ProjectUpdateSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = Project
-        fields = [
-            "name",
-            "description",
-            "visibility",
-            "website",
-            "is_archived",
-        ]
-
-        read_only_fields = [
-            "id",
-            "slug",
-            "created_at",
-            "updated_at",
-        ]
-
-    def validate_name(self, value):
-        value = value.strip()
-
-        if len(value) < 3:
-            raise serializers.ValidationError("Project name too short.")
-        return value

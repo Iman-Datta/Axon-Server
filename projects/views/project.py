@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
 
-from ..serializers.project import ProjectCreateSerializer, ProjectListSerializer, ProjectDetailSerializer, ProjectUpdateSerializer
+from ..serializers.project import ProjectCreateSerializer, ProjectListSerializer, ProjectDetailSerializer
 from ..decorators import resolve_workspace, resolve_project
 from ..models import Project, ProjectMember
 from organizations.permissions import has_admin_permission, get_org_member
@@ -126,48 +126,32 @@ def project_update_view(request, slug, project_slug):
     # Organization permission
     if organization:
         if not get_org_member(request.user, organization):
-            return Response(
-                {
-                    "success": False,
-                    "message": "User is not a member of this organization.",
-                },
-                status=403,
-            )
+            return Response({
+                "success": False,
+                "message": "User is not a member of this organization.",
+            },status=403)
 
     member = is_project_member(request.user, request.project)
 
     if member is None:
-        return Response(
-            {
-                "success": False,
-                "message": "User is not a member of this project.",
-            },
-            status=403,
-        )
+        return Response({
+            "success": False,
+            "message": "User is not a member of this project.",
+        },status=403)
 
     if member.role != ProjectMember.Role.OWNER:
-        return Response(
-            {
-                "success": False,
-                "message": "Only the project owner can update the project.",
-            },
-            status=403,
-        )
+        return Response({
+            "success": False,
+            "message": "Only the project owner can update the project.",
+        },status=403)
 
-    serializer = ProjectUpdateSerializer(
-        request.project,
-        data=request.data,
-        partial=True,
-    )
+    serializer = ProjectDetailSerializer(request.project,data=request.data,partial=True)
 
     if not serializer.is_valid():
-        return Response(
-            {
-                "success": False,
-                "errors": serializer.errors,
-            },
-            status=400,
-        )
+        return Response({
+            "success": False,
+            "errors": serializer.errors,
+        },status=400)
 
     serializer.save()
 

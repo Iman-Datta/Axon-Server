@@ -232,7 +232,7 @@ def remove_member(request, slug, project_slug, member_id):
             "message": f"{username} removed successfully.",
         },status=200)
 
-@api_view(["POST"])
+@api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace
 @resolve_project
