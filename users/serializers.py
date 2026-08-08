@@ -215,6 +215,7 @@ class MeSerializer(serializers.ModelSerializer):
 
             "avatar",
             "bio",
+            "location",
 
             "is_profile_completed",
             "is_username_set",
@@ -232,3 +233,25 @@ class MeSerializer(serializers.ModelSerializer):
 
     def get_is_github_connected(self, obj):
         return bool(obj.github_id)
+
+class UpdateProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            "first_name",
+            "last_name",
+            "avatar",
+            "bio",
+            "location",
+            "linkedin_profile",
+            "portfolio_website",
+        ]
+        extra_kwargs = {
+            "first_name": {"required": False},
+            "last_name": {"required": False},
+            "avatar": {"required": False},
+            "bio": {"required": False},
+            "location": {"required": False},
+            "linkedin_profile": {"required": False},
+            "portfolio_website": {"required": False},
+        }

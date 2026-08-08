@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from ..models import User
-from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer,PublicProfileSerializer, MeSerializer
+from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer,PublicProfileSerializer, MeSerializer, UpdateProfileSerializer
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -131,3 +131,32 @@ def public_profile_view(request,username):
             "success": True,
             "data": serializer.data
         },status=200)
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def update_profile_view(request):
+    user = request.user
+
+    serializer = UpdateProfileSerializer(
+        instance=user,
+        data=request.data,
+        partial=True,
+    )
+
+    if not serializer.is_valid():
+        return Response(
+            {"success": False, "errors": serializer.errors},
+            status=400
+        )
+
+    serializer.save()
+
+    if not user.is_profile_completed:
+        user.is_profile_completed = True
+        user.save(update_fields=["is_profile_completed"])
+
+    return Response({
+            "success": True,
+            "user": UpdateProfileSerializer(user).data,
+        },status=200
+    )
