@@ -105,7 +105,7 @@ def project_detail_view(request, slug, project_slug):
                 "message": "User is not a member of this project.",
             },status=403)
 
-    serializer = ProjectDetailSerializer(request.project)
+    serializer = ProjectDetailSerializer(request.project, context={"request": request})
 
     return Response(
         {

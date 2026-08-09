@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from projects.models import Project
+from projects.models import Project, ProjectMember
 from users.models import Workspace, User
 
 class ProjectUserSerializer(serializers.ModelSerializer):
@@ -62,6 +62,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
         return obj.workspace.type
 
 class ProjectDetailSerializer(serializers.ModelSerializer):
+    role = serializers.SerializerMethodField()
     created_by = ProjectUserSerializer(read_only=True)
     workspace_type = serializers.CharField(source="workspace.type",read_only=True)
 
@@ -77,6 +78,14 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
             "is_archived",
             "created_by",
             "workspace_type",
+            "role",
             "created_at",
             "updated_at",
         ]
+
+    def get_role(self, obj):
+        request = self.context["request"]
+        user = request.user
+
+        membership = ProjectMember.objects.filter(project=obj,user=user,).first()
+        return membership.role if membership else None
