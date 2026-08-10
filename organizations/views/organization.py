@@ -140,7 +140,8 @@ def org_detail_view(request, slug):
     organization = workspace.organization
 
     serializer = OrganizationDetailSerializer(
-        organization
+        organization,
+        context={"request": request},
     )
 
     return Response(

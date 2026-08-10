@@ -58,6 +58,7 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
     followers_count = serializers.SerializerMethodField()
     members_count = serializers.SerializerMethodField()
     projects_count = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
 
     class Meta:
         model = Organization
@@ -70,6 +71,7 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
             "followers_count",
             "members_count",
             "projects_count",
+            "role",
         ]
 
     def get_followers_count(self, obj):
@@ -80,6 +82,15 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
 
     def get_projects_count(self, obj):
         return obj.workspace.projects.count()
+
+    def get_role(self, obj):
+            request = self.context["request"]
+            user = request.user
+    
+            membership = OrganizationMember.objects.filter(organization=obj,user=user,).first()
+            return membership.role if membership else None
+    
+    
 
 class OrganizationMemberSerializer(serializers.ModelSerializer):
     username = serializers.CharField(
