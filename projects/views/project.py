@@ -145,7 +145,7 @@ def project_update_view(request, slug, project_slug):
             "message": "Only the project owner can update the project.",
         },status=403)
 
-    serializer = ProjectDetailSerializer(request.project,data=request.data,partial=True)
+    serializer = ProjectDetailSerializer(request.project,data=request.data,partial=True, context={"request": request})
 
     if not serializer.is_valid():
         return Response({
