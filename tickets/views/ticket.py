@@ -158,7 +158,8 @@ def assign_ticket(request, slug, project_slug, ticket_id):
 
     assignee_id = request.data.get("assignee")
 
-    if assignee_id is None:
+    # Unassign if no ID is sent
+    if not assignee_id:
         ticket.assignee = None
         ticket.save()
 
@@ -168,17 +169,16 @@ def assign_ticket(request, slug, project_slug, ticket_id):
             "ticket": TicketSerializer(ticket).data,
         }, status=200)
 
+    # Search ProjectMember by Primary Key (id), NOT user!
     try:
-        member = ProjectMember.objects.get(
-            project=request.project,
-            user_id=assignee_id,
-        )
+        member = ProjectMember.objects.get(id=assignee_id, project=request.project)
     except ProjectMember.DoesNotExist:
         return Response({
             "success": False,
             "message": "Selected user is not a project member."
         }, status=400)
 
+    # Successfully assign the actual user attached to that member row
     ticket.assignee = member.user
     ticket.save()
 
