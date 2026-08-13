@@ -43,8 +43,8 @@ class Ticket(models.Model):
     class Type(models.TextChoices):
         TASK = "TASK", "Task"
         BUG = "BUG", "Bug"
-        STORY = "STORY", "Story"
         FEATURE = "FEATURE", "Feature"
+        IMPROVEMENT = "IMPROVEMENT", "Improvement",
 
     class Priority(models.TextChoices):
         LOW = "LOW", "Low"
