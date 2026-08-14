@@ -86,13 +86,19 @@ def list_tickets(request, slug, project_slug):
     status_filter = request.query_params.get("status")
     epic_filter = request.query_params.get("epic")
     column_filter = request.query_params.get("column")
-
+    assignee_filter = request.query_params.get("assignee")
     if status_filter:
         tickets = tickets.filter(status=status_filter)
     if epic_filter:
         tickets = tickets.filter(epic_id=epic_filter)
     if column_filter:
-        tickets = tickets.filter(kanban_column = column_filter)
+        tickets = tickets.filter(kanban_column=column_filter)
+        
+    if assignee_filter:
+        if assignee_filter == "me":
+            tickets = tickets.filter(assignee=request.user)
+        else:
+            tickets = tickets.filter(assignee_id=assignee_filter)
 
     serializer = TicketSerializer(tickets, many=True)
 
@@ -101,7 +107,6 @@ def list_tickets(request, slug, project_slug):
         "count": tickets.count(),
         "tickets": serializer.data
     }, status=200)
-
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace
