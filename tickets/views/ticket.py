@@ -107,6 +107,7 @@ def list_tickets(request, slug, project_slug):
         "count": tickets.count(),
         "tickets": serializer.data
     }, status=200)
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace

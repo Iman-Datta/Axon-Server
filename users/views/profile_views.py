@@ -5,7 +5,10 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
 from ..models import User
-from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer,PublicProfileSerializer, MeSerializer, UpdateProfileSerializer
+from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer,PublicProfileSerializer, MeSerializer, UpdateProfileSerializer, UserProfileOverviewSerializer
+
+from tickets.models import Ticket
+from organizations.models import OrganizationMember
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -192,3 +195,48 @@ def update_profile_password_view(request):
         "success": True,
         "message": "Password updated successfully.",
     },status=200)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_overview(request):
+    user = request.user
+
+    # 1. Global Assigned Tickets across all projects/organizations
+    assigned_tickets = Ticket.objects.filter(assignee=user).select_related(
+        "project", "project__workspace", "epic"
+    ).order_by("-updated_at")
+
+    # 2. Connected Organizations (Memberships)
+    organizations = OrganizationMember.objects.filter(user=user).select_related(
+        "organization"
+    ).order_by("-joined_at")
+
+    # 3. Subtle Ticket Metrics Summary
+    total_assigned = assigned_tickets.count()
+    completed_tickets = assigned_tickets.filter(status="DONE").count()
+    in_progress_tickets = assigned_tickets.filter(kanban_column="IN_PROGRESS").count()
+    
+    completion_rate = (
+        round((completed_tickets / total_assigned) * 100) if total_assigned > 0 else 0
+    )
+
+    metrics = {
+        "total_assigned": total_assigned,
+        "completed": completed_tickets,
+        "in_progress": in_progress_tickets,
+        "completion_rate": completion_rate,
+    }
+
+    # Package data together
+    data = {
+        "assigned_tickets": assigned_tickets,
+        "organizations": organizations,
+        "metrics": metrics,
+    }
+
+    serializer = UserProfileOverviewSerializer(data)
+    
+    return Response({
+        "success": True,
+        "profile": serializer.data
+    }, status=200)
