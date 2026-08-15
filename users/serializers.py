@@ -316,7 +316,6 @@ class ProfileTicketSerializer(serializers.ModelSerializer):
         workspace = obj.project.workspace
         return bool(hasattr(workspace, "organization") and workspace.organization)
 
-
 class ProfileOrganizationSerializer(serializers.ModelSerializer):
     id = serializers.ReadOnlyField(source="organization.id")
     name = serializers.ReadOnlyField(source="organization.name")
@@ -348,3 +347,55 @@ class UserProfileOverviewSerializer(serializers.Serializer):
     assigned_tickets = ProfileTicketSerializer(many=True)
     organizations = ProfileOrganizationSerializer(many=True)
     metrics = serializers.DictField()
+
+class MyWorkTicketSerializer(serializers.ModelSerializer):
+    epic_name = serializers.CharField(source="epic.name", read_only=True, default=None)
+    epic_color = serializers.CharField(source="epic.color", read_only=True, default=None)
+    project_name = serializers.CharField(source="project.name", read_only=True)
+    project_slug = serializers.CharField(source="project.slug", read_only=True)
+    
+    workspace_slug = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
+    is_organization = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ticket
+        fields = [
+            "id",
+            "ticket_number",
+            "title",
+            "status",
+            "kanban_column",
+            "priority",
+            "type",
+            "story_points",
+            "project_name",
+            "project_slug",
+            "workspace_slug",
+            "workspace_name",
+            "is_organization",
+            "epic_name",
+            "epic_color",
+            "updated_at",
+            "due_date",
+        ]
+
+    def get_workspace_slug(self, obj):
+        workspace = obj.project.workspace
+        if hasattr(workspace, "organization") and workspace.organization:
+            return workspace.organization.slug
+        if hasattr(workspace, "owner") and workspace.owner:
+            return workspace.owner.username
+        return "personal"
+
+    def get_workspace_name(self, obj):
+        workspace = obj.project.workspace
+        if hasattr(workspace, "organization") and workspace.organization:
+            return workspace.organization.name
+        if hasattr(workspace, "owner") and workspace.owner:
+            return workspace.owner.username
+        return "Personal"
+
+    def get_is_organization(self, obj):
+        workspace = obj.project.workspace
+        return bool(hasattr(workspace, "organization") and workspace.organization)

@@ -1,6 +1,6 @@
 
 from django.urls import path
-from .views import register_view, verify_magiclink_view, refresh_token_view, login_view, logout_view,me_view, google_login_view, google_callback_view, github_login_view, github_callback_view, check_username_view, update_username_view, send_otp_view, verify_email_otp_view, github_connect_view, complete_profile_view, public_profile_view, workspace_detail_view, update_profile_view, update_profile_password_view, my_overview
+from .views import register_view, verify_magiclink_view, refresh_token_view, login_view, logout_view,me_view, google_login_view, google_callback_view, github_login_view, github_callback_view, check_username_view, update_username_view, send_otp_view, verify_email_otp_view, github_connect_view, complete_profile_view, public_profile_view, workspace_detail_view, update_profile_view, update_profile_password_view, my_overview, my_work_tickets
 
 urlpatterns = [
     # Core auth
@@ -32,6 +32,7 @@ urlpatterns = [
     path("profile/update", update_profile_view, name="update-profile"),
     path("profile/password", update_profile_password_view, name="update-password"),
     path("my/overview/", my_overview, name="my_overview"),
+    path("my/work/", my_work_tickets, name="my-work-tickets"),
 
     # Workspace
     path("workspaces/<slug:slug>/", workspace_detail_view),

@@ -5,7 +5,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
 from ..models import User
-from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer,PublicProfileSerializer, MeSerializer, UpdateProfileSerializer, UserProfileOverviewSerializer
+from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer,PublicProfileSerializer, MeSerializer, UpdateProfileSerializer, UserProfileOverviewSerializer, MyWorkTicketSerializer
 
 from tickets.models import Ticket
 from organizations.models import OrganizationMember
@@ -239,4 +239,31 @@ def my_overview(request):
     return Response({
         "success": True,
         "profile": serializer.data
+    }, status=200)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_work_tickets(request):
+    user = request.user
+
+    # Fetch all tickets assigned to the user, optimized with select_related
+    tickets = Ticket.objects.filter(assignee=user).select_related(
+        "project", "project__workspace", "epic"
+    ).order_by("-updated_at")
+
+    serializer = MyWorkTicketSerializer(tickets, many=True)
+
+    # Optional metadata or status summary for the My Work header
+    total_count = tickets.count()
+    completed_count = tickets.filter(status="DONE").count()
+    open_count = total_count - completed_count
+
+    return Response({
+        "success": True,
+        "count": total_count,
+        "summary": {
+            "open": open_count,
+            "completed": completed_count,
+        },
+        "tickets": serializer.data
     }, status=200)
