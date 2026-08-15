@@ -8,6 +8,7 @@ from .models import Project
 from organizations.models import Organization
 
 def resolve_workspace(view_func):
+    print("Resolve workspace")
     @wraps(view_func)
     def wrapper(request, *args, **kwargs):
         slug = kwargs.get("slug")
