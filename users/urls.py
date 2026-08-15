@@ -28,11 +28,11 @@ urlpatterns = [
     path("profile/username/", update_username_view),
     path("me/",me_view),
     path("profile/complete/",complete_profile_view),
-    path("<str:username>/",public_profile_view,name="public-profile"),
     path("profile/update", update_profile_view, name="update-profile"),
     path("profile/password", update_profile_password_view, name="update-password"),
     path("my/overview/", my_overview, name="my_overview"),
     path("my/work/", my_work_tickets, name="my-work-tickets"),
+    path("<str:username>/",public_profile_view,name="public-profile"),
 
     # Workspace
     path("workspaces/<slug:slug>/", workspace_detail_view),
