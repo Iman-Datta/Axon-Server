@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Organization, OrganizationMember
 from users.models import User
+from projects.models import Project
 
 class OrganizationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -90,8 +91,6 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
             membership = OrganizationMember.objects.filter(organization=obj,user=user,).first()
             return membership.role if membership else None
     
-    
-
 class OrganizationMemberSerializer(serializers.ModelSerializer):
     username = serializers.CharField(
         source="user.username",
@@ -177,3 +176,18 @@ class UpdateMemberRoleSerializer(serializers.Serializer):
     role = serializers.ChoiceField(
         choices=OrganizationMember.Role.choices
     )
+
+class OrganizationProjectSummarySerializer(serializers.ModelSerializer):
+    ticket_count = serializers.IntegerField(read_only=True)
+    member_count = serializers.IntegerField(read_only=True)
+    
+    class Meta:
+        model = Project
+        fields = [
+            'id', 
+            'name', 
+            'slug', 
+            'is_archived', 
+            'ticket_count', 
+            'member_count'
+        ]

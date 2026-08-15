@@ -1,14 +1,18 @@
+from django.db.models import Count, Q
 from rest_framework.decorators import (api_view, permission_classes)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
 
-from ..serializers.project import ProjectCreateSerializer, ProjectListSerializer, ProjectDetailSerializer
+from ..serializers.project import ProjectCreateSerializer, ProjectListSerializer, ProjectDetailSerializer, ProjectOverviewTicketSerializer, ProjectCreatorSerializer
 from ..decorators import resolve_workspace, resolve_project
 from ..models import Project, ProjectMember
 from organizations.permissions import has_admin_permission, get_org_member
 from ..permissions import is_project_member
 from users.models import Workspace
+
+from tickets.models import Ticket
+from projects.models import Project
 
 
 @api_view(["POST"])
@@ -212,3 +216,73 @@ def delete_project(request, slug, project_slug):
         },
         status=200,
     )
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@resolve_workspace
+@resolve_project
+def project_overview(request, slug, project_slug):
+    project = request.project
+    tickets = Ticket.objects.filter(project=project)
+
+    # 1. Kanban status breakdown & metrics
+    ticket_stats = tickets.aggregate(
+        todo=Count('id', filter=Q(kanban_column='TODO')),
+        development=Count('id', filter=Q(kanban_column='IN_PROGRESS')),
+        review=Count('id', filter=Q(kanban_column='REVIEW')),
+        done=Count('id', filter=Q(kanban_column='DONE')),
+    )
+
+    total_tickets = tickets.count()
+    completed_tickets = ticket_stats['done'] or 0
+
+    # 2. Assigned tickets specifically for the current logged-in user
+    assigned_tickets_qs = tickets.filter(assignee=request.user).order_by('-updated_at')[:10]
+    assigned_tickets_data = ProjectOverviewTicketSerializer(assigned_tickets_qs, many=True).data
+
+    # 3. Project members list
+    project_memberships = ProjectMember.objects.filter(project=project).select_related('user')
+    members_data = [
+        {
+            "id": pm.user.id,
+            "username": pm.user.username,
+            "first_name" : pm.user.first_name,
+            "last_name": pm.user.last_name,
+            "avatar": getattr(pm.user, 'avatar', ''),
+            "role": pm.role,
+        } for pm in project_memberships
+    ]
+
+    # 4. Project Creator Data Serialization
+    creator_data = ProjectCreatorSerializer(project.created_by).data if project.created_by else None
+
+    # 5. Comprehensive Response Payload
+    return Response({
+        "success": True,
+        "project_details": {
+            "id": project.id,
+            "name": project.name,
+            "slug": project.slug,
+            "description": project.description,
+            "visibility": project.visibility,
+            "website": project.website,
+            "is_archived": project.is_archived,
+            "workspace_type": project.workspace.type if hasattr(project.workspace, 'type') else "organization",
+            "created_at": project.created_at,
+            "updated_at": project.updated_at,
+            "created_by": creator_data,
+        },
+        "metrics": {
+            "total_tickets": total_tickets,
+            "completed_tickets": completed_tickets,
+            "open_tickets": total_tickets - completed_tickets,
+        },
+        "ticket_overview": {
+            "todo": ticket_stats['todo'] or 0,
+            "development": ticket_stats['development'] or 0,
+            "review": ticket_stats['review'] or 0,
+            "done": ticket_stats['done'] or 0,
+        },
+        "assigned_tickets": assigned_tickets_data,
+        "members": members_data,
+    }, status=200)

@@ -3,6 +3,9 @@ from urllib.parse import urlparse
 from rest_framework import serializers
 from .models import User
 
+from tickets.models import Ticket
+from organizations.models import OrganizationMember
+
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True,min_length=8)
 
@@ -259,3 +262,140 @@ class UpdateProfileSerializer(serializers.ModelSerializer):
             "linkedin_profile": {"required": False},
             "portfolio_website": {"required": False},
         }
+
+class ProfileTicketSerializer(serializers.ModelSerializer):
+    epic_name = serializers.CharField(source="epic.name", read_only=True, default=None)
+    epic_color = serializers.CharField(source="epic.color", read_only=True, default=None)
+    project_name = serializers.CharField(source="project.name", read_only=True)
+    project_slug = serializers.CharField(source="project.slug", read_only=True)
+    
+    # Dynamically extract workspace slug & name from the Workspace model
+    workspace_slug = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
+    is_organization = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ticket
+        fields = [
+            "id",
+            "ticket_number",
+            "title",
+            "status",
+            "kanban_column",
+            "priority",
+            "type",
+            "story_points",
+            "project_name",
+            "project_slug",
+            "workspace_slug",
+            "workspace_name",
+            "is_organization",
+            "epic_name",
+            "epic_color",
+            "updated_at",
+        ]
+
+    def get_workspace_slug(self, obj):
+        workspace = obj.project.workspace
+        # Check if workspace has an organization attached, otherwise fallback to owner's username
+        if hasattr(workspace, "organization") and workspace.organization:
+            return workspace.organization.slug
+        if hasattr(workspace, "owner") and workspace.owner:
+            return workspace.owner.username
+        return "personal"
+
+    def get_workspace_name(self, obj):
+        workspace = obj.project.workspace
+        if hasattr(workspace, "organization") and workspace.organization:
+            return workspace.organization.name
+        if hasattr(workspace, "owner") and workspace.owner:
+            return workspace.owner.username
+        return "Personal"
+
+    def get_is_organization(self, obj):
+        workspace = obj.project.workspace
+        return bool(hasattr(workspace, "organization") and workspace.organization)
+
+class ProfileOrganizationSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField(source="organization.id")
+    name = serializers.ReadOnlyField(source="organization.name")
+    slug = serializers.ReadOnlyField(source="organization.slug")
+    description = serializers.ReadOnlyField(source="organization.description")
+
+    class Meta:
+        model = OrganizationMember
+        fields = ["id", "name", "slug", "description", "role", "joined_at"]
+
+
+class UserProfileOverviewSerializer(serializers.Serializer):
+    assigned_tickets = ProfileTicketSerializer(many=True)
+    organizations = ProfileOrganizationSerializer(many=True)
+    metrics = serializers.DictField()
+    
+class ProfileOrganizationSerializer(serializers.ModelSerializer):
+    id = serializers.ReadOnlyField(source="organization.id")
+    name = serializers.ReadOnlyField(source="organization.name")
+    slug = serializers.ReadOnlyField(source="organization.slug")
+    description = serializers.ReadOnlyField(source="organization.description")
+
+    class Meta:
+        model = OrganizationMember
+        fields = ["id", "name", "slug", "description", "role", "joined_at"]
+
+
+class UserProfileOverviewSerializer(serializers.Serializer):
+    assigned_tickets = ProfileTicketSerializer(many=True)
+    organizations = ProfileOrganizationSerializer(many=True)
+    metrics = serializers.DictField()
+
+class MyWorkTicketSerializer(serializers.ModelSerializer):
+    epic_name = serializers.CharField(source="epic.name", read_only=True, default=None)
+    epic_color = serializers.CharField(source="epic.color", read_only=True, default=None)
+    project_name = serializers.CharField(source="project.name", read_only=True)
+    project_slug = serializers.CharField(source="project.slug", read_only=True)
+    
+    workspace_slug = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
+    is_organization = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Ticket
+        fields = [
+            "id",
+            "ticket_number",
+            "title",
+            "status",
+            "kanban_column",
+            "priority",
+            "type",
+            "story_points",
+            "project_name",
+            "project_slug",
+            "workspace_slug",
+            "workspace_name",
+            "is_organization",
+            "epic_name",
+            "epic_color",
+            "updated_at",
+            "due_date",
+        ]
+
+    def get_workspace_slug(self, obj):
+        workspace = obj.project.workspace
+        if hasattr(workspace, "organization") and workspace.organization:
+            return workspace.organization.slug
+        if hasattr(workspace, "owner") and workspace.owner:
+            return workspace.owner.username
+        return "personal"
+
+    def get_workspace_name(self, obj):
+        workspace = obj.project.workspace
+        if hasattr(workspace, "organization") and workspace.organization:
+            return workspace.organization.name
+        if hasattr(workspace, "owner") and workspace.owner:
+            return workspace.owner.username
+        return "Personal"
+
+    def get_is_organization(self, obj):
+        workspace = obj.project.workspace
+        return bool(hasattr(workspace, "organization") and workspace.organization)

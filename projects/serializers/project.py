@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from projects.models import Project, ProjectMember
 from users.models import Workspace, User
+from tickets.models import Ticket
 
 class ProjectUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -89,3 +90,35 @@ class ProjectDetailSerializer(serializers.ModelSerializer):
 
         membership = ProjectMember.objects.filter(project=obj,user=user,).first()
         return membership.role if membership else None
+
+class ProjectOverviewTicketSerializer(serializers.ModelSerializer):
+    assignee_username = serializers.CharField(source='assignee.username', read_only=True)
+    assignee_avatar = serializers.CharField(source='assignee.avatar', read_only=True)
+
+    class Meta:
+        model = Ticket
+        fields = [
+            'id',
+            'title',
+            'ticket_number',
+            'status',
+            'kanban_column',
+            'priority',
+            'assignee_username',
+            'assignee_avatar',
+            'created_at'
+        ]
+
+class ProjectCreatorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            "first_name",
+            "last_name",
+            'username',
+            'email',
+            'avatar',
+            'github_username',
+            'github_profile'
+        ]
