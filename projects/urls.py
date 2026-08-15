@@ -9,26 +9,24 @@ from .views.github import (github_repo_view, github_connect_view, disconnect_git
 from .views.webhook import (github_webhook_view, create_github_webhook_view)
 
 urlpatterns = [
-    # Projects
-    path("<slug:slug>/my/",my_projects_view,name="workspace-projects"),
+    # Static/literal paths FIRST
+    path("github/repositories/", github_repo_view, name="github-repositories"),
+    path("github/webhook/", github_webhook_view, name="github-webhook"),
+    path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/role/", update_member_role),
+    path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/remove/", remove_member),
+
+    # Dynamic slug-based patterns AFTER
+    path("<slug:slug>/my/", my_projects_view, name="workspace-projects"),
     path("<slug:slug>/create/", create_project_view),
     path("<slug:slug>/<slug:project_slug>/", project_detail_view),
     path("<slug:slug>/<slug:project_slug>/update/", project_update_view),
     path("<slug:slug>/<slug:project_slug>/delete/", delete_project),
-    path('<slug:slug>/<slug:project_slug>/overview/', project_overview, name='project-overview'),
-
-    # Members
+    path("<slug:slug>/<slug:project_slug>/overview/", project_overview, name="project-overview"),
     path("<slug:slug>/<slug:project_slug>/members/", list_member),
     path("<slug:slug>/<slug:project_slug>/member/add/", add_member),
-    path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/role/", update_member_role),
-    path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/remove/", remove_member),
     path("<slug:slug>/<slug:project_slug>/leave/", leave_project),
-
-    # Github
-    path("github/repositories/", github_repo_view, name="github-repositories"),
     path("<slug:slug>/<slug:project_slug>/github/connect/", github_connect_view, name="github-connect"),
     path("<slug:slug>/<slug:project_slug>/github/disconnect/", disconnect_github_view, name="github-disconnect"),
     path("<slug:slug>/<slug:project_slug>/github/create-webhook/", create_github_webhook_view, name="github-create-webhook"),
-    path("github/webhook/", github_webhook_view, name="github-webhook"),
-    path("<slug:slug>/<slug:project_slug>/github/status/",github_integration_status_view,name="github-status"),
+    path("<slug:slug>/<slug:project_slug>/github/status/", github_integration_status_view, name="github-status"),
 ]
