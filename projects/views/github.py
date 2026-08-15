@@ -12,10 +12,8 @@ from ..serializers.github import GitHubIntegrationSerializer, GitHubConnectSeria
 @permission_classes([IsAuthenticated])
 @github_connected
 def github_repo_view(request):
-    print("inside github repo view")
     user = request.user
-
-    try:
+    try:    
         response = requests.get(
             "https://api.github.com/user/repos",
             headers = {
