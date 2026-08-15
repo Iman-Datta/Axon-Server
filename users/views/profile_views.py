@@ -1,4 +1,7 @@
-from rest_framework.decorators import (api_view, permission_classes)
+import boto3
+from django.conf import settings
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.decorators import (api_view, permission_classes, parser_classes)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.password_validation import validate_password
@@ -266,4 +269,61 @@ def my_work_tickets(request):
             "completed": completed_count,
         },
         "tickets": serializer.data
+    }, status=200)
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser, FormParser])
+def update_profile_avatar(request):
+    user = request.user
+    avatar_file = request.FILES.get("avatar")
+
+    if not avatar_file:
+        return Response({"success": False, "message": "No image provided."}, status=400)
+
+    # Initialize boto3 S3 client for Cloudflare R2
+    s3_client = boto3.client(
+        "s3",
+        endpoint_url=settings.AWS_S3_ENDPOINT_URL,
+        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+        region_name="auto",
+    )
+
+    try:
+        # 1. Safely check if the old avatar exists AND belongs to your R2 public URL
+        # This completely skips trying to delete Google, GitHub, or other external profile photos from R2
+        if user.avatar and settings.R2_PUBLIC_URL and user.avatar.startswith(settings.R2_PUBLIC_URL):
+            old_file_path = user.avatar.replace(f"{settings.R2_PUBLIC_URL.rstrip('/')}/", "")
+            try:
+                s3_client.delete_object(
+                    Bucket=settings.AWS_STORAGE_BUCKET_NAME,
+                    Key=old_file_path
+                )
+            except Exception as delete_error:
+                print(f"Could not delete old avatar from R2: {delete_error}")
+
+        # 2. Define new file path inside your bucket
+        file_path = f"avatars/users/{user.username}_{avatar_file.name}"
+
+        # 3. Upload new file directly to Cloudflare R2
+        s3_client.upload_fileobj(
+            avatar_file,
+            settings.AWS_STORAGE_BUCKET_NAME,
+            file_path,
+            ExtraArgs={"ContentType": avatar_file.content_type}
+        )
+        
+        # 4. Construct the public URL and save to user profile
+        avatar_url = f"{settings.R2_PUBLIC_URL.rstrip('/')}/{file_path}"
+        user.avatar = avatar_url
+        user.save()
+
+    except Exception as e:
+        return Response({"success": False, "message": str(e)}, status=500)
+
+    return Response({
+        "success": True,
+        "message": "Avatar updated successfully.",
+        "avatar": user.avatar
     }, status=200)
