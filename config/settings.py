@@ -37,6 +37,20 @@ CSRF_TRUSTED_ORIGINS = os.getenv(
     "CSRF_TRUSTED_ORIGINS",
     ""
 ).split(",") if os.getenv("CSRF_TRUSTED_ORIGINS") else []
+# --- Cloudflare R2 / S3 Storage Settings ---
+AWS_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = os.getenv("R2_BUCKET_NAME")
+AWS_S3_ENDPOINT_URL = os.getenv("R2_ENDPOINT_URL")
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = True
+
+# Add this line here:
+R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL")
+
+# Tell Django to use R2 for uploaded media files
+DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
 
 # Application definition
@@ -135,11 +149,8 @@ AUTH_USER_MODEL = "users.User" #app.Model_name
 
 
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
 
 
