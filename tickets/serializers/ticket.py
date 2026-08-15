@@ -1,10 +1,11 @@
-from django.db.models import Max
+from django.db import transaction, IntegrityError
+from django.db.models import Max, F
 
 from rest_framework import serializers
 
 from ..models import Ticket, Epic
 from users.models import User
-from projects.models import ProjectMember
+from projects.models import Project, ProjectMember
 
 
 class UserMiniSerializer(serializers.ModelSerializer):
@@ -34,6 +35,7 @@ class UserMiniSerializer(serializers.ModelSerializer):
 
         return membership.role if membership else None
 
+
 class EpicMiniSerializer(serializers.ModelSerializer):
     class Meta:
         model = Epic
@@ -42,6 +44,7 @@ class EpicMiniSerializer(serializers.ModelSerializer):
             "name",
             "color",
         ]
+
 
 class TicketSerializer(serializers.ModelSerializer):
     epic = EpicMiniSerializer(read_only=True)
@@ -119,38 +122,44 @@ class TicketSerializer(serializers.ModelSerializer):
         project = self.context["project"]
         user = self.context["user"]
 
-        # Generate ticket number
-        last_ticket = (
-            Ticket.objects.filter(project=project)
-            .order_by("-id")
-            .first()
-        )
+        with transaction.atomic():
+            # Lock this project's row so two simultaneous ticket-creation
+            # requests for the SAME project cannot read/increment the
+            # counter at the same time. This guarantees no two tickets
+            # in this project can ever get the same number.
+            locked_project = Project.objects.select_for_update().get(pk=project.pk)
 
-        if last_ticket:
-            last_number = int(last_ticket.ticket_number.split("-")[-1])
-            next_number = last_number + 1
-        else:
-            next_number = 1
+            locked_project.ticket_sequence = F("ticket_sequence") + 1
+            locked_project.save(update_fields=["ticket_sequence"])
+            locked_project.refresh_from_db(fields=["ticket_sequence"])
 
-        ticket_number = f"{project.slug.upper()}-{next_number}"
+            next_number = locked_project.ticket_sequence
+            ticket_number = f"{locked_project.key}-{next_number:03d}"
 
-        # Get column (default is TODO)
-        column = validated_data.get("kanban_column",Ticket.KanbanColumn.TODO)
+            # Get column (default is TODO)
+            column = validated_data.get("kanban_column", Ticket.KanbanColumn.TODO)
 
-        # Generate order
-        max_order = (
-            Ticket.objects.filter(project=project,kanban_column=column,).aggregate(Max("order"))["order__max"])
+            # Generate order
+            max_order = (
+                Ticket.objects.filter(project=project, kanban_column=column)
+                .aggregate(Max("order"))["order__max"]
+            )
+            order = 0 if max_order is None else max_order + 1
 
-        order = 0 if max_order is None else max_order + 1
+            try:
+                return Ticket.objects.create(
+                    project=project,
+                    creator=user,
+                    ticket_number=ticket_number,
+                    order=order,
+                    **validated_data,
+                )
+            except IntegrityError:
+                # Safety net only, should not trigger given the row lock above.
+                raise serializers.ValidationError(
+                    {"message": "Could not generate a unique ticket number. Please try again."}
+                )
 
-        return Ticket.objects.create(
-            project=project,
-            creator=user,
-            ticket_number=ticket_number,
-            order=order,
-            **validated_data,
-        )
-    
     def update(self, instance, validated_data):
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
