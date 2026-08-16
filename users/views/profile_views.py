@@ -8,10 +8,13 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
 from ..models import User
+from ..utils.r2_utils import get_s3_client, upload_avatar_to_r2
 from ..serializers import UsernameUpdateSerializer, UsernameSerializer, CompleteProfileSerializer,PublicProfileSerializer, MeSerializer, UpdateProfileSerializer, UserProfileOverviewSerializer, MyWorkTicketSerializer
 
 from tickets.models import Ticket
 from organizations.models import OrganizationMember
+from projects.decorators import resolve_project, resolve_workspace
+from organizations.permissions import has_admin_permission
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -274,56 +277,50 @@ def my_work_tickets(request):
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser, FormParser])
-def update_profile_avatar(request):
-    user = request.user
+@resolve_workspace
+def update_workspace_avatar(request, slug):
+    workspace = request.workspace
     avatar_file = request.FILES.get("avatar")
-
+ 
     if not avatar_file:
         return Response({"success": False, "message": "No image provided."}, status=400)
-
-    # Initialize boto3 S3 client for Cloudflare R2
-    s3_client = boto3.client(
-        "s3",
-        endpoint_url=settings.AWS_S3_ENDPOINT_URL,
-        aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-        region_name="auto",
-    )
-
+ 
+    if workspace.type == "personal":
+        if workspace.owner != request.user:
+            return Response({"success": False, "message": "Permission denied."}, status=403)
+ 
+        target = workspace.owner
+        file_path = f"avatars/users/{target.username}_{avatar_file.name}"
+ 
+    else:
+        organization = workspace.organization
+ 
+        if not has_admin_permission(request.user, organization):
+            return Response(
+                {"success": False, "message": "Only organization admins can update the organization avatar."},
+                status=403,
+            )
+ 
+        target = organization
+        file_path = f"avatars/organizations/{organization.slug}_{avatar_file.name}"
+ 
     try:
-        # 1. Safely check if the old avatar exists AND belongs to your R2 public URL
-        # This completely skips trying to delete Google, GitHub, or other external profile photos from R2
-        if user.avatar and settings.R2_PUBLIC_URL and user.avatar.startswith(settings.R2_PUBLIC_URL):
-            old_file_path = user.avatar.replace(f"{settings.R2_PUBLIC_URL.rstrip('/')}/", "")
-            try:
-                s3_client.delete_object(
-                    Bucket=settings.AWS_STORAGE_BUCKET_NAME,
-                    Key=old_file_path
-                )
-            except Exception as delete_error:
-                print(f"Could not delete old avatar from R2: {delete_error}")
-
-        # 2. Define new file path inside your bucket
-        file_path = f"avatars/users/{user.username}_{avatar_file.name}"
-
-        # 3. Upload new file directly to Cloudflare R2
-        s3_client.upload_fileobj(
+        s3_client = get_s3_client()
+        avatar_url = upload_avatar_to_r2(
+            s3_client,
             avatar_file,
-            settings.AWS_STORAGE_BUCKET_NAME,
-            file_path,
-            ExtraArgs={"ContentType": avatar_file.content_type}
+            current_avatar_url=target.avatar,
+            file_path=file_path,
         )
-        
-        # 4. Construct the public URL and save to user profile
-        avatar_url = f"{settings.R2_PUBLIC_URL.rstrip('/')}/{file_path}"
-        user.avatar = avatar_url
-        user.save()
-
+ 
+        target.avatar = avatar_url
+        target.save(update_fields=["avatar"])
+ 
     except Exception as e:
         return Response({"success": False, "message": str(e)}, status=500)
-
+ 
     return Response({
-        "success": True,
-        "message": "Avatar updated successfully.",
-        "avatar": user.avatar
-    }, status=200)
+            "success": True,
+            "message": "Avatar updated successfully.",
+            "avatar": target.avatar,
+        },status=200)

@@ -76,12 +76,15 @@ def list_member(request, slug, project_slug):
             "success": False,
             "message": "User is not a member of this project.",
         },status=403,)
+
+    edit_access = bool(has_lead_permission(request.user, request.project))
     
     members = ProjectMember.objects.select_related("user").filter(project=request.project)
     serializer = ProjectMemberListSerializer(members, many=True)
     
     return Response({
         "success": True,
+        "can_edit": edit_access,
         "members": serializer.data
     },status=200)
 
@@ -194,7 +197,6 @@ def remove_member(request, slug, project_slug, member_id):
                 "message": "Member not found.",
             },status=404)
 
-    # Developer & Viewer cannot remove anyone
     if requester.role in [
         ProjectMember.Role.DEVELOPER,ProjectMember.Role.VIEWER]:
         return Response({

@@ -67,6 +67,7 @@ class OrganizationDetailSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "slug",
+            "avatar",
             "description",
             "created_at",
             "followers_count",

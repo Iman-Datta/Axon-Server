@@ -7,6 +7,7 @@ class Organization(models.Model):
     name = models.CharField(max_length=100)
     slug = models.SlugField(unique=True, max_length=50, blank=True)
     description = models.TextField(blank=True)
+    avatar = models.URLField(blank=True, null=True)
 
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete = models.SET_NULL, null=True, related_name="created_organizations")
     created_at = models.DateTimeField(auto_now_add= True)

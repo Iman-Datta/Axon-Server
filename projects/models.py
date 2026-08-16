@@ -107,7 +107,6 @@ class Project(models.Model):
     def __str__(self):
         return self.name
 
-
 class ProjectMember(models.Model):
     class Role(models.TextChoices):
         OWNER = "OWNER", "Owner"
@@ -131,7 +130,6 @@ class ProjectMember(models.Model):
                 name="unique_project_member"
             )
         ]
-
 
 class GitHubIntegration(models.Model):
     project = models.OneToOneField(Project, on_delete=models.CASCADE, related_name="github_integration")
