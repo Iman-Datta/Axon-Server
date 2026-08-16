@@ -24,11 +24,13 @@ def list_members(request, slug):
             "message": "You are not a member of this organization."
         },status=403)
     
+    edit_access = bool(has_admin_permission(request.user, organization))
     members = OrganizationMember.objects.filter(organization = organization)
     serializer = OrganizationMemberSerializer(members, many=True)
 
     return Response({
         "success": True,
+        "can_edit": edit_access,
         "members": serializer.data
     },status=200)
 

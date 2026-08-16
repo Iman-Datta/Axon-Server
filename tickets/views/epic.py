@@ -143,6 +143,8 @@ def list_epics(request, slug, project_slug):
                 "success": False,
                 "message": "You are not a member of this project."
             },status=403)
+    edit_access = bool(has_lead_permission(request.user, request.project))
+    print(edit_access)
     
     epics = (
         Epic.objects.filter(project=request.project)
@@ -158,10 +160,11 @@ def list_epics(request, slug, project_slug):
 
     serializer = EpicSerializer(epics,many=True,)
     return Response({
-            "success": True,
-            "count": epics.count(),
-            "epics": serializer.data,
-        },status=200)
+        "success": True,
+        "count": epics.count(),
+        "epics": serializer.data,
+        "can_edit": edit_access,
+    },status=200)
 
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])

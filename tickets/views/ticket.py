@@ -81,6 +81,9 @@ def list_tickets(request, slug, project_slug):
     if not is_project_member(request.user, request.project):
         return Response({"success": False, "message": "You are not a member of this project."}, status=403)
 
+    edit_access = bool(has_developer_permission(request.user, request.project))
+    print(edit_access)
+
     tickets = Ticket.objects.filter(project=request.project).order_by("-created_at")
 
     status_filter = request.query_params.get("status")
@@ -105,7 +108,8 @@ def list_tickets(request, slug, project_slug):
     return Response({
         "success": True,
         "count": tickets.count(),
-        "tickets": serializer.data
+        "tickets": serializer.data,
+        "can_edit": edit_access
     }, status=200)
 
 @api_view(["GET"])

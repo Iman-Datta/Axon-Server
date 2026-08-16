@@ -8,6 +8,8 @@ from ..decorators import resolve_project, resolve_workspace
 from ..models import GitHubIntegration
 from ..serializers.github import GitHubIntegrationSerializer, GitHubConnectSerializer
 
+from projects.permissions import is_project_owner
+
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 @github_connected
@@ -210,6 +212,8 @@ def disconnect_github_view(request, slug, project_slug):
 @resolve_workspace
 @resolve_project
 def github_integration_status_view(request, slug, project_slug):
+    has_access = bool(is_project_owner(request.user, request.project))
+    
     github_connected = False
     github_token_expired = False
 
@@ -235,6 +239,7 @@ def github_integration_status_view(request, slug, project_slug):
     if integration is None:
         return Response({
             "success": True,
+            "access" : has_access,
             "github_connected": github_connected,
             "github_token_expired" : github_token_expired,
             "repository_connected": False,
@@ -244,6 +249,7 @@ def github_integration_status_view(request, slug, project_slug):
 
     return Response({
         "success": True,
+        "access" : has_access,
         "github_connected": github_connected,
         "github_token_expired": github_token_expired,
         "repository_connected": True,
