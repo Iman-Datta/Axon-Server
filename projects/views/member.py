@@ -145,9 +145,9 @@ def update_member_role(request, slug, project_slug, member_id):
 
         if new_role == ProjectMember.Role.LEAD:
             return Response({
-                    "success": False,
-                    "message": "Lead cannot promote members to Lead.",
-                },status=403,)
+                "success": False,
+                "message": "Lead cannot promote members to Lead.",
+            },status=403,)
 
     # Owner cannot demote themselves
     if (requester.user == member.user and requester.role == ProjectMember.Role.OWNER):
@@ -160,13 +160,13 @@ def update_member_role(request, slug, project_slug, member_id):
     member.save(update_fields=["role"])
 
     return Response({
-            "success": True,
-            "message": "Role updated successfully.",
-            "member": {
-                "username": member.user.username,
-                "role": member.role,
-            },
-        },status=200,)
+        "success": True,
+        "message": "Role updated successfully.",
+        "member": {
+            "username": member.user.username,
+            "role": member.role,
+        },
+    },status=200,)
 
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
