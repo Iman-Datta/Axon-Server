@@ -5,17 +5,10 @@ from django.utils.text import slugify
 from users.models import Workspace
 from django.conf import settings
 
-
 _STOPWORDS = {"the", "a", "an", "and", "or", "of", "for", "to", "in", "on"}
 
-
 def generate_project_key(name):
-    """
-    Derive a short key from a project name.
-    'Axon Backend' -> 'AB'
-    'EduCore HMS (Student & Academic Management System)' -> 'EHSA'
-    'Axon' -> 'AXON'
-    """
+
     words = re.findall(r"[A-Za-z0-9]+", name)
     words = [w for w in words if w.lower() not in _STOPWORDS]
 

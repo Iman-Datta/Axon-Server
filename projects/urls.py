@@ -12,8 +12,8 @@ urlpatterns = [
     # Static/literal paths FIRST
     path("github/repositories/", github_repo_view, name="github-repositories"),
     path("github/webhook/", github_webhook_view, name="github-webhook"),
-    path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/role/", update_member_role),
-    path("workspaces/<slug:slug>/projects/<slug:project_slug>/members/<int:member_id>/remove/", remove_member),
+    path("<slug:slug>/<slug:project_slug>/<int:member_id>/role/", update_member_role),
+    path("<slug:slug>/<slug:project_slug>/<int:member_id>/remove/", remove_member),
 
     # Dynamic slug-based patterns AFTER
     path("<slug:slug>/my/", my_projects_view, name="workspace-projects"),
