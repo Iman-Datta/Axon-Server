@@ -213,62 +213,74 @@ def remove_member(request, slug, project_slug, member_id):
     if organization:
         if not get_org_member(request.user, organization):
             return Response({
-                    "success": False,
-                    "message": "User is not a member of this organization."
-                },status=403)
+                "success": False,
+                "message": "User is not a member of this organization."
+            }, status=403)
         
     requester = is_project_member(request.user, request.project)
 
     if requester is None:
         return Response({
-                "success": False,
-                "message": "User is not a member of this project.",
-            },status=403,)
+            "success": False,
+            "message": "User is not a member of this project.",
+        }, status=403)
 
     try:
-        member = ProjectMember.objects.get(id=member_id,project=request.project)
+        member = ProjectMember.objects.get(id=member_id, project=request.project)
     except ProjectMember.DoesNotExist:
         return Response({
-                "success": False,
-                "message": "Member not found.",
-            },status=404)
+            "success": False,
+            "message": "Member not found.",
+        }, status=404)
 
-    if requester.role in [
-        ProjectMember.Role.DEVELOPER,ProjectMember.Role.VIEWER]:
+    if requester.role in [ProjectMember.Role.DEVELOPER, ProjectMember.Role.VIEWER]:
         return Response({
-                "success": False,
-                "message": "You do not have permission to remove members.",
-            },status=403)
+            "success": False,
+            "message": "You do not have permission to remove members.",
+        }, status=403)
 
     # Lead restrictions
     if requester.role == ProjectMember.Role.LEAD:
-        if member.role in [ProjectMember.Role.OWNER,ProjectMember.Role.LEAD,]:
+        if member.role in [ProjectMember.Role.OWNER, ProjectMember.Role.LEAD]:
             return Response({
-                    "success": False,
-                    "message": "Lead cannot remove this member.",
-                },status=403)
+                "success": False,
+                "message": "Lead cannot remove this member.",
+            }, status=403)
 
     # Owner cannot remove themselves
     if (requester.user == member.user and requester.role == ProjectMember.Role.OWNER):
         return Response({
-                "success": False,
-                "message": "Project owner cannot remove themselves.",
-            },status=400)
+            "success": False,
+            "message": "Project owner cannot remove themselves.",
+        }, status=400)
 
     # Project owner cannot be removed
     if member.role == ProjectMember.Role.OWNER:
         return Response({
-                "success": False,
-                "message": "Project owner cannot be removed.",
-            },status=400)
+            "success": False,
+            "message": "Project owner cannot be removed.",
+        }, status=400)
 
-    username = member.user.username
-    member.delete()
+    with transaction.atomic():
+        # Store references BEFORE deleting the model instance
+        target_user = member.user
+        username = target_user.username
+        removed_role = member.role
+
+        member.delete()
+
+        log_activity(
+            project=request.project,
+            verb=Activity.Verb.MEMBER_REMOVED,
+            actor=request.user,
+            target_user=target_user,
+            metadata={"role": removed_role}
+        )
 
     return Response({
-            "success": True,
-            "message": f"{username} removed successfully.",
-        },status=200)
+        "success": True,
+        "message": f"{username} removed successfully.",
+    }, status=200)
 
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
