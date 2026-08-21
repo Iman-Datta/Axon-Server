@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     'organizations.apps.OrganizationsConfig',
     'projects.apps.ProjectsConfig',
     'tickets.apps.TicketsConfig',
+    'activity.apps.ActivityConfig',
 ]
 
 MIDDLEWARE = [

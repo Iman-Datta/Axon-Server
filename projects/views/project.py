@@ -14,6 +14,8 @@ from users.models import Workspace
 from tickets.models import Ticket
 from projects.models import Project
 
+from activity.services import log_activity
+from activity.models import Activity
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -47,6 +49,17 @@ def create_project_view(request, slug):
             user=request.user,
             role=ProjectMember.Role.OWNER
         )
+
+        log_activity(
+            project=project,
+            verb=Activity.Verb.PROJECT_CREATED,
+            actor=request.user,
+            metadata={
+                "project_name": project.name,
+                "workspace_type": workspace.type,
+            }
+        )
+
     return Response({
             "message": "Project created successfully.",
             "project": {

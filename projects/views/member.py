@@ -3,6 +3,7 @@
 from rest_framework.decorators import (api_view, permission_classes)
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db import transaction
 
 from ..serializers.member import AddMemberSerializer, ProjectMemberListSerializer,UpdateMemberRoleSerializer
 from ..decorators import resolve_project, resolve_workspace
@@ -11,19 +12,21 @@ from organizations.models import OrganizationMember
 from organizations.permissions import get_org_member
 from ..permissions import has_lead_permission,is_project_member
 
+from activity.services import log_activity
+from activity.models import Activity
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace
 @resolve_project
 def add_member(request, slug, project_slug):
-    if not has_lead_permission(user = request.user, project = request.project):
+    if not has_lead_permission(user=request.user, project=request.project):
         return Response({
             "success": False,
             "message": "You do not have permission to add members to this project."
         }, status=403)
-    
 
-    serializer = AddMemberSerializer(data=request.data,context={"project": request.project})
+    serializer = AddMemberSerializer(data=request.data, context={"project": request.project})
 
     if not serializer.is_valid():
         return Response({
@@ -36,27 +39,36 @@ def add_member(request, slug, project_slug):
     
     organization = request.workspace.organization
     if organization:
-        if not OrganizationMember.objects.filter(organization=organization, user = user).exists():
+        if not OrganizationMember.objects.filter(organization=organization, user=user).exists():
             return Response({
-                    "success": False,
-                    "message": "User is not a member of this organization.",
-                },status=403,)
+                "success": False,
+                "message": "User is not a member of this organization.",
+            }, status=403)
     
-    member = ProjectMember.objects.create(
-        project=request.project,
-        user=user,
-        role=role,
-    )
+    with transaction.atomic():
+        member = ProjectMember.objects.create(
+            project=request.project,
+            user=user,
+            role=role,
+        )
+
+        log_activity(
+            project=request.project,
+            verb=Activity.Verb.MEMBER_ADDED,
+            actor=request.user,
+            target_user=user,
+            metadata={"role": role}
+        )
 
     return Response({
-            "success": True,
-            "message": "Member added successfully.",
-            "member": {
-                "username": member.user.username,
-                "role": member.role,
-                "joined_at": member.joined_at,
-            },
-        },status=201,)
+        "success": True,
+        "message": "Member added successfully.",
+        "member": {
+            "username": member.user.username,
+            "role": member.role,
+            "joined_at": member.joined_at,
+        },
+    }, status=201)
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
