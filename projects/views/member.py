@@ -287,7 +287,6 @@ def remove_member(request, slug, project_slug, member_id):
 @resolve_workspace
 @resolve_project
 def leave_project(request, slug, project_slug):
-
     organization = request.workspace.organization
 
     if organization:
@@ -319,8 +318,20 @@ def leave_project(request, slug, project_slug):
             },
             status=400,
         )
+    with transaction.atomic():
+        leaving_role = member.role
+        member.delete()
 
-    member.delete()
+        log_activity(
+            project=request.project,
+            verb=Activity.Verb.MEMBER_REMOVED,
+            actor=request.user,
+            target_user=request.user,
+            metadata={
+                "role": leaving_role,
+                "action": "left_project"
+            }
+        )
 
     return Response(
         {
