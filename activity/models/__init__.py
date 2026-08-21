@@ -1,1 +1,1 @@
-from . import *
+from .activity import *
