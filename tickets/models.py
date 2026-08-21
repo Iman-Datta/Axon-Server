@@ -77,7 +77,6 @@ class Ticket(models.Model):
     priority = models.CharField(max_length=20,choices=Priority.choices,default=Priority.MEDIUM,db_index=True,)
     story_points = models.PositiveSmallIntegerField(choices=STORY_POINT_CHOICES,default=1)
 
-    estimated_hours = models.DecimalField(max_digits=5,decimal_places=2,null=True,blank=True)
 
     due_date = models.DateTimeField(null=True,blank=True)
     order = models.PositiveIntegerField(default=0)

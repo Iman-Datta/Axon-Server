@@ -71,7 +71,6 @@ class TicketSerializer(serializers.ModelSerializer):
             "priority",
             "kanban_column",
             "story_points",
-            "estimated_hours",
             "order",
             "epic",
             "epic_id",
