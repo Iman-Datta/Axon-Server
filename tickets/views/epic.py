@@ -194,10 +194,24 @@ def delete_epic(request, slug, project_slug, epic_id):
         epic = Epic.objects.get(id=epic_id,project=request.project,)
     except Epic.DoesNotExist:
         return Response({
-                "success": False,
-                "message": "Epic not found."
-            },status=404)
-    epic.delete()
+            "success": False,
+            "message": "Epic not found."
+        },status=404)
+    
+    with transaction.atomic:
+        epic.delete()
+
+        log_activity(
+            project=request.project,
+            verb=Activity.Verb.EPIC_DELETED,
+            actor=request.user,
+            metadata={
+                "epic_id": epic.id,
+                "epic_title": epic.title,
+                "color": epic.color,
+            }
+        )
+
 
     return Response({
             "success": True,
