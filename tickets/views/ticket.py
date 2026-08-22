@@ -215,18 +215,11 @@ def assign_ticket(request, slug, project_slug, ticket_id):
                 "message": "Selected user is not a project member."
             }, status=400)
 
-    # Capture previous assignee details
-    old_assignee_name = (
-        ticket.assignee.get_full_name() or ticket.assignee.username
-        if ticket.assignee else None
-    )
-    old_assignee_id = ticket.assignee.id if ticket.assignee else None
-
     with transaction.atomic():
         ticket.assignee = new_assignee_user
         ticket.save()
 
-        new_assignee_name = (
+        assignee_name = (
             new_assignee_user.get_full_name() or new_assignee_user.username
             if new_assignee_user else None
         )
@@ -242,10 +235,8 @@ def assign_ticket(request, slug, project_slug, ticket_id):
             metadata={
                 "ticket_number": ticket.ticket_number,
                 "ticket_title": ticket.title,
-                "old_assignee_id": old_assignee_id,
-                "old_assignee_name": old_assignee_name,
-                "new_assignee_id": new_assignee_user.id if new_assignee_user else None,
-                "new_assignee_name": new_assignee_name,
+                "assignee_id": new_assignee_user.id if new_assignee_user else None,
+                "assignee_name": assignee_name,
             }
         )
 
