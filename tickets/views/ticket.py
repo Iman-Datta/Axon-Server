@@ -42,6 +42,11 @@ def create_ticket(request, slug, project_slug):
             ticket=ticket,
             verb=Activity.Verb.TICKET_CREATED,
             actor=request.user,
+            metadata={
+                "ticket_number": ticket.ticket_number,
+                "ticket_title": ticket.title,
+                "priority": ticket.priority,
+            }
         )
 
     return Response({

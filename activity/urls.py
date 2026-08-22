@@ -1,6 +1,6 @@
 from django.urls import path
-from .views import get_all_activities
+from .views import ticket_activity_list
 
 urlpatterns = [
-    path("", get_all_activities, name="get-all-activities"),
+    path("ticket/<int:ticket_id>/", ticket_activity_list, name="get-ticket-activities"),
 ]
