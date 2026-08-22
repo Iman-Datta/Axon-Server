@@ -1,8 +1,6 @@
 from django.urls import path
-
-app_name = "activity"
+from .views import ticket_activity_list
 
 urlpatterns = [
-    # Leave empty for now, or add your view routes:
-    # path("", ActivityFeedView.as_view(), name="list"),
+    path("ticket/<int:ticket_id>/", ticket_activity_list, name="get-ticket-activities"),
 ]

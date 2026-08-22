@@ -133,7 +133,7 @@ def github_connect_view(request, slug, project_slug):
             "message": "Repository not found or access denied.",
         },status=404)
 
-    with transaction.atomic:
+    with transaction.atomic():
         integration, created = GitHubIntegration.objects.update_or_create(
                 project=request.project,
                 defaults={
