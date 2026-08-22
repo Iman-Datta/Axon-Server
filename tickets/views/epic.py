@@ -1,4 +1,5 @@
 from django.db.models import Count, Q
+from django.db import transaction
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -7,8 +8,8 @@ from projects.decorators import resolve_project,resolve_workspace
 from ..serializers.epic import EpicSerializer, EpicDetailsSerializer
 from ..models import Epic, Ticket
 
-
-from django.db.models import Count, Q
+from activity.models import Activity
+from activity.services import log_activity
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -28,9 +29,20 @@ def create_epic(request, slug, project_slug):
             "user": request.user,
         },
     )
+    with transaction.atomic():
+        serializer.is_valid(raise_exception=True)
+        epic = serializer.save()
 
-    serializer.is_valid(raise_exception=True)
-    epic = serializer.save()
+        log_activity(
+            project=request.project,
+            verb=Activity.Verb.EPIC_CREATED,
+            actor=request.user,
+            metadata={
+                "epic_id": epic.id,
+                "epic_title": epic.title,
+                "color": epic.color,
+            }
+        )
 
     # Fetch the created epic with annotations
     epic = (
