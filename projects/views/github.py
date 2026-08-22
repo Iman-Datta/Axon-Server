@@ -218,7 +218,21 @@ def disconnect_github_view(request, slug, project_slug):
                 "message": "Unable to connect to GitHub.",
             }, status=503)
 
-    integration.delete()
+    with transaction.atomic():
+        repo_name = integration.repository_name
+        repo_full_name = integration.repository_full_name
+
+        integration.delete()
+
+        log_activity(
+            project=request.project,
+            verb=Activity.Verb.GITHUB_DISCONNECTED,
+            actor=request.user,
+            metadata={
+                "repo_name": repo_name,
+                "repo_full_name": repo_full_name,
+            }
+        )
 
     return Response({
         "success": True,
