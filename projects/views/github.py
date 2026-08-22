@@ -2,6 +2,7 @@ import requests
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.db import transaction
 
 from users.decorators import github_connected
 from ..decorators import resolve_project, resolve_workspace
@@ -9,6 +10,9 @@ from ..models import GitHubIntegration
 from ..serializers.github import GitHubIntegrationSerializer, GitHubConnectSerializer
 
 from projects.permissions import is_project_owner
+
+from activity.services import log_activity
+from activity.models import Activity
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
@@ -129,16 +133,30 @@ def github_connect_view(request, slug, project_slug):
             "message": "Repository not found or access denied.",
         },status=404)
 
-    integration, created = GitHubIntegration.objects.update_or_create(
+    with transaction.atomic:
+        integration, created = GitHubIntegration.objects.update_or_create(
+                project=request.project,
+                defaults={
+                    "created_by": request.user,
+                    "repository_id": selected_repo["id"],
+                    "repository_name": selected_repo["name"],
+                    "repository_full_name": selected_repo["full_name"],
+                    "default_branch": selected_repo["default_branch"],
+                    "is_active": True,
+                },
+            )
+
+        log_activity(
             project=request.project,
-            defaults={
-                "created_by": request.user,
-                "repository_id": selected_repo["id"],
-                "repository_name": selected_repo["name"],
-                "repository_full_name": selected_repo["full_name"],
+            verb=Activity.Verb.GITHUB_CONNECTED,
+            actor=request.user,
+            metadata={
+                "repo_id": selected_repo["id"],
+                "repo_name": selected_repo["name"],
+                "repo_full_name": selected_repo["full_name"],
                 "default_branch": selected_repo["default_branch"],
-                "is_active": True,
-            },
+                "repo_url": selected_repo.get("html_url", ""),
+            }
         )
 
 
@@ -200,7 +218,21 @@ def disconnect_github_view(request, slug, project_slug):
                 "message": "Unable to connect to GitHub.",
             }, status=503)
 
-    integration.delete()
+    with transaction.atomic():
+        repo_name = integration.repository_name
+        repo_full_name = integration.repository_full_name
+
+        integration.delete()
+
+        log_activity(
+            project=request.project,
+            verb=Activity.Verb.GITHUB_DISCONNECTED,
+            actor=request.user,
+            metadata={
+                "repo_name": repo_name,
+                "repo_full_name": repo_full_name,
+            }
+        )
 
     return Response({
         "success": True,
