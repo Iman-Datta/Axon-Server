@@ -12,11 +12,6 @@ def get_s3_client():
 
 
 def upload_avatar_to_r2(s3_client, avatar_file, current_avatar_url, file_path):
-    """
-    Deletes the old avatar from R2 (only if it's actually hosted on our
-    own R2 bucket, never touches Google/GitHub profile photo URLs),
-    uploads the new file, and returns the new public URL.
-    """
     if current_avatar_url and settings.R2_PUBLIC_URL and current_avatar_url.startswith(settings.R2_PUBLIC_URL):
         old_file_path = current_avatar_url.replace(f"{settings.R2_PUBLIC_URL.rstrip('/')}/", "")
         try:

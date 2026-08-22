@@ -34,7 +34,7 @@ def create_ticket(request, slug, project_slug):
     if not serializer.is_valid():
         return Response({"success": False, "errors": serializer.errors}, status=400)
 
-    with transaction.atomic:
+    with transaction.atomic():
         ticket = serializer.save()
 
         log_activity(
@@ -42,12 +42,6 @@ def create_ticket(request, slug, project_slug):
             ticket=ticket,
             verb=Activity.Verb.TICKET_CREATED,
             actor=request.user,
-            metadata={
-                "ticket_key": ticket.key,
-                "ticket_title": ticket.title,
-                "issue_type": ticket.issue_type,
-                "priority": ticket.priority,
-            }
         )
 
     return Response({
@@ -84,7 +78,7 @@ def update_ticket(request, slug, project_slug, ticket_id):
 
     # 1. Capture old state before saving changes
     old_status = ticket.status
-    old_column = ticket.kanban_column
+    
 
     with transaction.atomic():
         # 2. Save updated ticket instance
@@ -105,21 +99,6 @@ def update_ticket(request, slug, project_slug, ticket_id):
                 }
             )
 
-        # 4. Log Kanban Column change if modified (e.g. board drag-and-drop)
-        if old_column != updated_ticket.kanban_column:
-            log_activity(
-                project=request.project,
-                ticket=updated_ticket,
-                actor=request.user,
-                verb=Activity.Verb.TICKET_COLUMN_CHANGED,
-                metadata={
-                    "ticket_number": updated_ticket.ticket_number,
-                    "ticket_title": updated_ticket.title,
-                    "old_column": old_column,
-                    "new_column": updated_ticket.kanban_column,
-                }
-            )
-
     return Response({
         "success": True,
         "message": "Ticket updated successfully.",
@@ -135,7 +114,6 @@ def list_tickets(request, slug, project_slug):
         return Response({"success": False, "message": "You are not a member of this project."}, status=403)
 
     edit_access = bool(has_developer_permission(request.user, request.project))
-    print(edit_access)
 
     tickets = Ticket.objects.filter(project=request.project).order_by("-created_at")
 
@@ -280,50 +258,63 @@ def assign_ticket(request, slug, project_slug, ticket_id):
 def update_board(request, slug, project_slug):
     if not has_developer_permission(request.user, request.project):
         return Response({
-                "success": False,
-                "message": "Permission denied."
-            },status=403)
+            "success": False,
+            "message": "Permission denied."
+        }, status=403)
 
     tickets = request.data.get("tickets")
 
     if not isinstance(tickets, list):
         return Response({
-                "success": False,
-                "message": "Invalid payload. 'tickets' must be a list."
-            },status=400)
+            "success": False,
+            "message": "Invalid payload. 'tickets' must be a list."
+        }, status=400)
 
     with transaction.atomic():
         for item in tickets:
-
             required_fields = ["id", "kanban_column", "order"]
 
             for field in required_fields:
                 if field not in item:
                     return Response({
-                            "success": False,
-                            "message": f"'{field}' is required."
-                        },status=400)
+                        "success": False,
+                        "message": f"'{field}' is required."
+                    }, status=400)
 
             try:
-                ticket = Ticket.objects.get(id=item["id"],project=request.project,)
+                ticket = Ticket.objects.get(id=item["id"], project=request.project)
             except Ticket.DoesNotExist:
-                return Response(
-                    {
-                        "success": False,
-                        "message": f"Ticket with id {item['id']} not found."
-                    },status=404)
+                return Response({
+                    "success": False,
+                    "message": f"Ticket with id {item['id']} not found."
+                }, status=404)
 
-            ticket.kanban_column = item["kanban_column"]
+            # 1. Capture old column before saving changes
+            old_column = ticket.kanban_column
+            new_column = item["kanban_column"]
+
+            # 2. Update values
+            ticket.kanban_column = new_column
             ticket.order = item["order"]
 
-            ticket.save(
-                update_fields=[
-                    "kanban_column",
-                    "order",
-                ]
-            )
+            ticket.save(update_fields=["kanban_column", "order"])
+
+            # 3. Log activity ONLY if the column actually changed
+            if old_column != new_column:
+                log_activity(
+                    project=request.project,
+                    ticket=ticket,
+                    actor=request.user,
+                    verb=Activity.Verb.TICKET_COLUMN_CHANGED,
+                    metadata={
+                        "ticket_number": ticket.ticket_number,
+                        "ticket_title": ticket.title,
+                        "old_column": old_column,
+                        "new_column": new_column,
+                    }
+                )
 
     return Response({
-            "success": True,
-            "message": "Kanban board updated successfully."
-        },status=200)
+        "success": True,
+        "message": "Kanban board updated successfully."
+    }, status=200)

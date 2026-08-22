@@ -10,7 +10,7 @@ urlpatterns = [
     path('org/', include('organizations.urls')),
     path('projects/', include('projects.urls')),
     path('tickets/<slug:slug>/<slug:project_slug>/', include('tickets.urls')),
-    path('activity/', include('activity.urls')),
+    path('activities/', include('activity.urls')),
 ]
 
 if settings.DEBUG:

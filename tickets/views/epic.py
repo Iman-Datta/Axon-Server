@@ -39,7 +39,7 @@ def create_epic(request, slug, project_slug):
             actor=request.user,
             metadata={
                 "epic_id": epic.id,
-                "epic_title": epic.title,
+                "epic_title": epic.name,
                 "color": epic.color,
             }
         )
@@ -156,7 +156,6 @@ def list_epics(request, slug, project_slug):
                 "message": "You are not a member of this project."
             },status=403)
     edit_access = bool(has_lead_permission(request.user, request.project))
-    print(edit_access)
     
     epics = (
         Epic.objects.filter(project=request.project)
@@ -198,7 +197,7 @@ def delete_epic(request, slug, project_slug, epic_id):
             "message": "Epic not found."
         },status=404)
     
-    with transaction.atomic:
+    with transaction.atomic():
         epic.delete()
 
         log_activity(
@@ -207,7 +206,7 @@ def delete_epic(request, slug, project_slug, epic_id):
             actor=request.user,
             metadata={
                 "epic_id": epic.id,
-                "epic_title": epic.title,
+                "epic_title": epic.name,
                 "color": epic.color,
             }
         )
