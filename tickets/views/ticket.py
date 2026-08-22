@@ -11,6 +11,9 @@ from projects.models import ProjectMember
 from ..models import Ticket
 from ..serializers.ticket import TicketSerializer
 
+from activity.services import log_activity
+from activity.models import Activity
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -31,7 +34,21 @@ def create_ticket(request, slug, project_slug):
     if not serializer.is_valid():
         return Response({"success": False, "errors": serializer.errors}, status=400)
 
-    ticket = serializer.save()
+    with transaction.atomic:
+        ticket = serializer.save()
+
+        log_activity(
+            project=request.project,
+            ticket=ticket,
+            verb=Activity.Verb.TICKET_CREATED,
+            actor=request.user,
+            metadata={
+                "ticket_key": ticket.key,
+                "ticket_title": ticket.title,
+                "issue_type": ticket.issue_type,
+                "priority": ticket.priority,
+            }
+        )
 
     return Response({
         "success": True,
@@ -65,12 +82,48 @@ def update_ticket(request, slug, project_slug, ticket_id):
     if not serializer.is_valid():
         return Response({"success": False, "errors": serializer.errors}, status=400)
 
-    serializer.save()
+    # 1. Capture old state before saving changes
+    old_status = ticket.status
+    old_column = ticket.kanban_column
+
+    with transaction.atomic():
+        # 2. Save updated ticket instance
+        updated_ticket = serializer.save()
+
+        # 3. Log Status change if modified
+        if old_status != updated_ticket.status:
+            log_activity(
+                project=request.project,
+                ticket=updated_ticket,
+                actor=request.user,
+                verb=Activity.Verb.TICKET_STATUS_CHANGED,
+                metadata={
+                    "ticket_number": updated_ticket.ticket_number,
+                    "ticket_title": updated_ticket.title,
+                    "old_status": old_status,
+                    "new_status": updated_ticket.status,
+                }
+            )
+
+        # 4. Log Kanban Column change if modified (e.g. board drag-and-drop)
+        if old_column != updated_ticket.kanban_column:
+            log_activity(
+                project=request.project,
+                ticket=updated_ticket,
+                actor=request.user,
+                verb=Activity.Verb.TICKET_COLUMN_CHANGED,
+                metadata={
+                    "ticket_number": updated_ticket.ticket_number,
+                    "ticket_title": updated_ticket.title,
+                    "old_column": old_column,
+                    "new_column": updated_ticket.kanban_column,
+                }
+            )
 
     return Response({
         "success": True,
         "message": "Ticket updated successfully.",
-        "ticket": serializer.data
+        "ticket": TicketSerializer(updated_ticket).data
     }, status=200)
 
 @api_view(["GET"])
@@ -167,34 +220,55 @@ def assign_ticket(request, slug, project_slug, ticket_id):
         return Response({"success": False, "message": "Ticket not found."}, status=404)
 
     assignee_id = request.data.get("assignee")
+    new_assignee_user = None
 
-    # Unassign if no ID is sent
-    if not assignee_id:
-        ticket.assignee = None
+    if assignee_id:
+        try:
+            member = ProjectMember.objects.get(id=assignee_id, project=request.project)
+            new_assignee_user = member.user
+        except ProjectMember.DoesNotExist:
+            return Response({
+                "success": False,
+                "message": "Selected user is not a project member."
+            }, status=400)
+
+    # Capture previous assignee details
+    old_assignee_name = (
+        ticket.assignee.get_full_name() or ticket.assignee.username
+        if ticket.assignee else None
+    )
+    old_assignee_id = ticket.assignee.id if ticket.assignee else None
+
+    with transaction.atomic():
+        ticket.assignee = new_assignee_user
         ticket.save()
 
-        return Response({
-            "success": True,
-            "message": "Ticket unassigned successfully.",
-            "ticket": TicketSerializer(ticket).data,
-        }, status=200)
+        new_assignee_name = (
+            new_assignee_user.get_full_name() or new_assignee_user.username
+            if new_assignee_user else None
+        )
+        
+        verb = Activity.Verb.TICKET_ASSIGNED if new_assignee_user else Activity.Verb.TICKET_UNASSIGNED
 
-    # Search ProjectMember by Primary Key (id), NOT user!
-    try:
-        member = ProjectMember.objects.get(id=assignee_id, project=request.project)
-    except ProjectMember.DoesNotExist:
-        return Response({
-            "success": False,
-            "message": "Selected user is not a project member."
-        }, status=400)
-
-    # Successfully assign the actual user attached to that member row
-    ticket.assignee = member.user
-    ticket.save()
+        log_activity(
+            project=request.project,
+            ticket=ticket,
+            actor=request.user,
+            verb=verb,
+            target_user=new_assignee_user,
+            metadata={
+                "ticket_number": ticket.ticket_number,
+                "ticket_title": ticket.title,
+                "old_assignee_id": old_assignee_id,
+                "old_assignee_name": old_assignee_name,
+                "new_assignee_id": new_assignee_user.id if new_assignee_user else None,
+                "new_assignee_name": new_assignee_name,
+            }
+        )
 
     return Response({
         "success": True,
-        "message": "Ticket assigned successfully.",
+        "message": "Ticket assigned successfully." if new_assignee_user else "Ticket unassigned successfully.",
         "ticket": TicketSerializer(ticket).data,
     }, status=200)
 
