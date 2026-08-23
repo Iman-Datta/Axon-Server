@@ -9,7 +9,7 @@ class UserMiniSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "username", "first_name", "last_name", "avatar"]
 
-class TicketActivitySerializer(serializers.ModelSerializer):
+class ActivitySerializer(serializers.ModelSerializer):
     actor = UserMiniSerializer(read_only=True)
 
     class Meta:

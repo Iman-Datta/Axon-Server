@@ -3,7 +3,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from ..models import Ticket, Activity
-from ..serializers import TicketActivitySerializer
+from ..serializers import ActivitySerializer
 from projects.permissions import is_project_member
 from projects.decorators import resolve_workspace, resolve_project
 
@@ -32,9 +32,41 @@ def ticket_activity_list(request, slug, project_slug, ticket_id):
 
     paginator = StandardResultsSetPagination()
     paginated_activities = paginator.paginate_queryset(activities, request)
-    serializer = TicketActivitySerializer(paginated_activities, many=True)
+    serializer = ActivitySerializer(paginated_activities, many=True)
 
     return paginator.get_paginated_response({
         "success": True,
         "results": serializer.data
     })
+
+PROJECT_VERBS = [
+    "PROJECT_CREATED",
+    "MEMBER_ADDED",
+    "MEMBER_REMOVED",
+    "MEMBER_ROLE_CHANGED",
+    "EPIC_CREATED",
+    "EPIC_DELETED",
+    "GITHUB_CONNECTED",
+    "GITHUB_DISCONNECTED",
+]
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+@resolve_workspace
+@resolve_project
+def project_activity_list(request, slug, project_slug):
+    if not is_project_member(request.user, request.project):
+        return Response(
+            {"success": False, "message": "Permission denied."}, status=403
+        )
+
+    activities = (Activity.objects.filter(project=request.project,verb__in=PROJECT_VERBS,).select_related("actor").order_by("-created_at"))
+
+    paginator = StandardResultsSetPagination()
+    paginated_activities = paginator.paginate_queryset(activities, request)
+    serializer = ActivitySerializer(paginated_activities, many=True)
+
+    return paginator.get_paginated_response(
+        {"success": True, "results": serializer.data}
+    )
