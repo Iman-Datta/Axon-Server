@@ -14,6 +14,9 @@ from ..serializers.ticket import TicketSerializer
 from activity.services import log_activity
 from activity.models import Activity
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
@@ -246,7 +249,6 @@ def assign_ticket(request, slug, project_slug, ticket_id):
         "ticket": TicketSerializer(ticket).data,
     }, status=200)
 
-# TODO
 @api_view(["PATCH"])
 @permission_classes([IsAuthenticated])
 @resolve_workspace
@@ -265,6 +267,8 @@ def update_board(request, slug, project_slug):
             "success": False,
             "message": "Invalid payload. 'tickets' must be a list."
         }, status=400)
+
+    broadcast_data = []
 
     with transaction.atomic():
         for item in tickets:
@@ -309,6 +313,29 @@ def update_board(request, slug, project_slug):
                         "new_column": new_column,
                     }
                 )
+
+            # Collect updated items for WebSocket broadcast
+            broadcast_data.append({
+                "id": ticket.id,
+                "kanban_column": ticket.kanban_column,
+                "order": ticket.order,
+            })
+
+        # 4. Broadcast via Channels AFTER transaction succeeds
+        channel_layer = get_channel_layer()
+        group_name = f"board_{request.project.slug}"
+
+        payload = {
+            "type": "board_update",  # Maps to board_update() in Consumer
+            "payload": {
+                "actor_id": request.user.id,
+                "tickets": broadcast_data,
+            }
+        }
+
+        transaction.on_commit(
+            lambda: async_to_sync(channel_layer.group_send)(group_name, payload)
+        )
 
     return Response({
         "success": True,
