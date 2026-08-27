@@ -94,7 +94,13 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [f"redis://{REDIS_HOST}:{REDIS_PORT}/0"],
+            "hosts": [
+                {
+                    "address": f"redis://{REDIS_HOST}:{REDIS_PORT}/0",
+                    "socket_timeout": None,      # don't time out on blocking reads
+                    "socket_connect_timeout": 5, # keep a short timeout only for the initial connect
+                }
+            ],
             "capacity": 1500,
             "expiry": 10,
         },
