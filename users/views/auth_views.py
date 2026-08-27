@@ -1,16 +1,19 @@
 import hashlib
 from django.contrib.auth import authenticate
 from rest_framework.decorators import (api_view, permission_classes)
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework import status
+from django.utils import timezone
 
-from ..serializers import RegisterSerializer, LoginSerializer
+from ..serializers import RegisterSerializer, LoginSerializer, ForgotPasswordRequestSerializer, ResetPasswordVerifySerializer
 
 from ..models import User
 from ..utils.email_verification import send_magicLink_email
+
+from .verification.email import send_email_otp
 
 @api_view(['POST'])
 def register_view(request):
@@ -220,3 +223,89 @@ def logout_view(request):
 
     response.delete_cookie("refresh_token")
     return response
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def forgot_password_request_view(request):
+    serializer = ForgotPasswordRequestSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(
+            {"success": False, "errors": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    email = serializer.validated_data["email"]
+
+    # Prevent Account Enumeration: Return success even if user doesn't exist
+    try:
+        user = User.objects.get(email=email)
+        send_email_otp(user, email)
+    except User.DoesNotExist:
+        pass
+
+    return Response(
+        {
+            "success": True,
+            "message": "If an account with that email exists, an OTP has been sent."
+        },
+        status=status.HTTP_200_OK
+    )
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def reset_password_verify_view(request):
+    serializer = ResetPasswordVerifySerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response(
+            {"success": False, "errors": serializer.errors},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    email = serializer.validated_data["email"]
+    otp = serializer.validated_data["otp"]
+    new_password = serializer.validated_data["new_password"]
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response(
+            {"success": False, "message": "Invalid credentials or expired OTP."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Validate OTP Hash
+    otp_hash = hashlib.sha256(otp.encode()).hexdigest()
+    if user.email_otp_hash != otp_hash:
+        return Response(
+            {"success": False, "message": "Invalid OTP."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Check OTP Expiry
+    if not user.email_otp_expire or user.email_otp_expire < timezone.now():
+        user.email_otp_hash = None
+        user.email_otp_expire = None
+        user.save(update_fields=["email_otp_hash", "email_otp_expire"])
+        return Response(
+            {"success": False, "message": "OTP has expired. Please request a new one."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    # Set new password and invalidate OTP & tokens
+    user.set_password(new_password)
+    user.email_otp_hash = None
+    user.email_otp_expire = None
+    user.refresh_token_hash = None  # Force re-login on all active sessions
+    user.save(
+        update_fields=[
+            "password",
+            "email_otp_hash",
+            "email_otp_expire",
+            "refresh_token_hash"
+        ]
+    )
+
+    return Response(
+        {"success": True, "message": "Password reset successfully. You can now log in."},
+        status=status.HTTP_200_OK
+    )

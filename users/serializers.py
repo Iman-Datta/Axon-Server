@@ -399,3 +399,11 @@ class MyWorkTicketSerializer(serializers.ModelSerializer):
     def get_is_organization(self, obj):
         workspace = obj.project.workspace
         return bool(hasattr(workspace, "organization") and workspace.organization)
+
+class ForgotPasswordRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+class ResetPasswordVerifySerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    otp = serializers.CharField(max_length=6)
+    new_password = serializers.CharField(min_length=6, write_only=True)
