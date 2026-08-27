@@ -1,6 +1,6 @@
 
 from django.urls import path
-from .views import register_view, verify_magiclink_view, refresh_token_view, login_view, logout_view,me_view, google_login_view, google_callback_view, github_login_view, github_callback_view, check_username_view, update_username_view, send_otp_view, verify_email_otp_view, github_connect_view, complete_profile_view, public_profile_view, workspace_detail_view, update_profile_view, update_profile_password_view, my_overview, my_work_tickets, update_workspace_avatar,get_user_workspaces
+from .views import register_view, verify_magiclink_view, refresh_token_view, login_view, logout_view,me_view, google_login_view, google_callback_view, github_login_view, github_callback_view, check_username_view, update_username_view, send_otp_view, verify_email_otp_view, github_connect_view, complete_profile_view, public_profile_view, workspace_detail_view, update_profile_view, update_profile_password_view, my_overview, my_work_tickets, update_workspace_avatar,get_user_workspaces,reset_password_verify_view, forgot_password_request_view
 
 urlpatterns = [
     # Core auth
@@ -8,6 +8,8 @@ urlpatterns = [
     path("refresh/",refresh_token_view),
     path("login/", login_view),
     path("logout/", logout_view),
+    path('forgot-password/', forgot_password_request_view, name='forgot_password'),
+    path('reset-password/', reset_password_verify_view, name='reset_password'),
 
     # Email
     path("verify-email/", verify_magiclink_view),

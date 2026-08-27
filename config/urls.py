@@ -4,8 +4,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import path, include
 
+from .views import health_check
+
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path("health/", health_check),
     path('auth/', include ('users.urls')),
     path('org/', include('organizations.urls')),
     path('projects/', include('projects.urls')),
